@@ -72,7 +72,7 @@ def seed_database():
         db.session.bulk_save_objects(initial_items)
         db.session.commit()
 
-# Ensure database tables exist during request lifecycle
+# Ensure database tables exist safely before requests
 @app.before_request
 def initialize_database():
     db.create_all()
@@ -121,6 +121,7 @@ def send_order_sms(order_number, total, phone_number):
             to=formatted_phone
         )
     except Exception as e:
+        # Catches Error 572006 or failed credentials safely without crashing the app
         print(f"Order SMS Error: {e}")
 
 # --- FRONTEND & AUTH ROUTES ---
@@ -257,6 +258,7 @@ def place_order():
     db.session.add(new_order)
     db.session.commit()
 
+    # Safely triggers SMS notification
     send_order_sms(order_num, grand_total, phone)
 
     return jsonify({
