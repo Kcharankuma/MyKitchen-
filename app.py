@@ -1,18 +1,24 @@
+import os
+import random
+import json
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from twilio.rest import Client
-import random
-import json
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_kitchen_key_123'
+app.secret_key = os.getenv('SECRET_KEY', 'super_secret_kitchen_key_123')
 
 # --- ADMIN SECRET CONFIGURATION ---
-ADMIN_SECRET_KEY = "mysecretkitchen123"
+ADMIN_SECRET_KEY = os.getenv('ADMIN_SECRET_KEY', 'mysecretkitchen123')
 
-# --- DATABASE CONFIGURATION ---
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///kitchen.db'
+# --- DATABASE CONFIGURATION (Vercel Read-Only Fix) ---
+if os.getenv('VERCEL'):
+    db_path = '/tmp/kitchen.db'
+else:
+    db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'kitchen.db')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -39,7 +45,7 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(db.String(20), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    items_json = db.Column(db.Text, nullable=False, default="[]")  # Stores ordered items & quantities
+    items_json = db.Column(db.Text, nullable=False, default="[]")
     subtotal = db.Column(db.Float, nullable=False, default=0.0)
     gst_amount = db.Column(db.Float, nullable=False, default=0.0)
     total_amount = db.Column(db.Float, nullable=False)
@@ -66,7 +72,13 @@ def seed_database():
         db.session.bulk_save_objects(initial_items)
         db.session.commit()
 
-# --- TWILIO SMS NOTIFICATION HELPER FUNCTIONS ---
+# Ensure database tables exist during request lifecycle
+@app.before_request
+def initialize_database():
+    db.create_all()
+    seed_database()
+
+# --- TWILIO SMS HELPER FUNCTIONS ---
 def format_phone_number(phone):
     if not phone:
         return None
@@ -77,11 +89,12 @@ def format_phone_number(phone):
 
 def send_welcome_sms(name, phone_number):
     formatted_phone = format_phone_number(phone_number)
-    if not formatted_phone:
+    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+    twilio_phone = os.getenv('TWILIO_PHONE_NUMBER', '+17372508034')
+
+    if not formatted_phone or not account_sid or not auth_token:
         return
-    account_sid = 'YOUR_TWILIO_ACCOUNT_SID'
-    auth_token = 'YOUR_TWILIO_AUTH_TOKEN'
-    twilio_phone = '+17372508034'
     try:
         client = Client(account_sid, auth_token)
         client.messages.create(
@@ -94,11 +107,12 @@ def send_welcome_sms(name, phone_number):
 
 def send_order_sms(order_number, total, phone_number):
     formatted_phone = format_phone_number(phone_number)
-    if not formatted_phone:
+    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+    twilio_phone = os.getenv('TWILIO_PHONE_NUMBER', '+17372508034')
+
+    if not formatted_phone or not account_sid or not auth_token:
         return
-    account_sid = 'YOUR_TWILIO_ACCOUNT_SID'
-    auth_token = 'YOUR_TWILIO_AUTH_TOKEN'
-    twilio_phone = '+17372508034'
     try:
         client = Client(account_sid, auth_token)
         client.messages.create(
@@ -161,7 +175,6 @@ def customer_logout():
     session.pop('user_name', None)
     return redirect(url_for('home'))
 
-# --- CUSTOMER: View Received Orders ---
 @app.route('/my-orders')
 def my_orders():
     if not session.get('user_id'):
@@ -169,7 +182,6 @@ def my_orders():
     orders = Order.query.filter_by(user_id=session['user_id']).order_by(Order.id.desc()).all()
     return render_template('orders.html', orders=orders)
 
-# --- ADMIN: Update Order Status Route ---
 @app.route('/admin/order/status/<int:order_id>', methods=['POST'])
 def update_order_status(order_id):
     if not session.get('admin_logged_in'):
@@ -210,7 +222,6 @@ def get_menu():
     } for i in items]
     return jsonify({"success": True, "count": len(menu_data), "data": menu_data})
 
-# BILLING SYSTEM & ORDER PLACEMENT
 @app.route('/api/order', methods=['POST'])
 def place_order():
     data = request.get_json()
@@ -223,9 +234,8 @@ def place_order():
     if not cart or not name or not phone or not address:
         return jsonify({"success": False, "message": "Please fill in all checkout details."}), 400
 
-    # Calculate subtotal, 5% GST, and grand total server-side for accuracy
     subtotal = sum(item['price'] * item['qty'] for item in cart)
-    gst_amount = round(subtotal * 0.05, 2)  # 5% GST
+    gst_amount = round(subtotal * 0.05, 2)
     grand_total = round(subtotal + gst_amount, 2)
 
     order_num = f"ORD-{random.randint(100000, 999999)}"
@@ -261,7 +271,7 @@ def place_order():
         "customerAddress": address
     })
 
-# --- HIDDEN OWNER / ADMIN ROUTES ---
+# --- ADMIN ROUTES ---
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     access_key = request.args.get('key') or request.form.get('secret_key')
@@ -297,9 +307,5 @@ def admin_panel():
     
     return render_template('admin.html', items=items, orders=orders, total_sales=total_sales, total_orders=len(orders), total_dishes=len(items))
 
-with app.app_context():
-    db.create_all()
-    seed_database()
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    app.run()
