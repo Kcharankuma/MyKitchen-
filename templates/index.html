@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>MY KITCHEN</title>
+        <link rel="stylesheet"
+            href="{{ url_for('static', filename='style.css') }}">
+        <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css'
+            rel='stylesheet'>
+        <script src="{{ url_for('static', filename='main.js') }}"
+            defer></script>
+        <style>
+            /* Billing Summary Styles */
+            .bill-summary { width: 100%; margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
+            .bill-row { display: flex; justify-content: space-between; font-size: 0.95rem; color: #555; margin-bottom: 5px; }
+            .bill-row.total { font-size: 1.15rem; font-weight: 700; color: #1a1a1a; border-top: 2px solid #1a1a1a; padding-top: 5px; margin-top: 5px; }
+            
+            /* Printable Receipt Styling */
+            .receipt-box { text-align: left; background: #fff; padding: 20px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; color: #000; }
+            .receipt-header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+            .receipt-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+            .receipt-table th, .receipt-table td { text-align: left; padding: 6px 0; border-bottom: 1px dashed #ddd; font-size: 0.9rem; color: #000; }
+            .receipt-table th:last-child, .receipt-table td:last-child { text-align: right; }
+            .receipt-footer { border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; }
+            .print-btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 15px; }
+        </style>
+    </head>
+    <body>
+        <!-- HEADER NAVBAR -->
+        <header>
+            <a href="#" class="logo">MY KITCHEN</a>
+            <div class="bx bx-menu" id="menu-icon"></div>
+            <ul class="navbar">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#chefs">Our Chefs</a></li>
+                <li><a href="#contact">Contact</a></li>
+                {% if session.get('user_id') %}
+                <li><a href="/my-orders">My Orders</a></li>
+                <li><a href="{{ url_for('customer_logout') }}">Logout ({{ session.get('user_name') }})</a></li>
+                {% else %}
+                <li><a href="/customer/login">Login In</a></li>
+                {% endif %}
+            </ul>
+        </header>
+
+        <!-- HOME SECTION -->
+        <section class="home" id="home">
+            <div class="home-text">
+                <h3>More than Faster</h3>
+                <h1>Be the fastest <br>In delivery <br>Your <span>Food</span></h1>
+                <p>Select chefs known for their quick service and efficient order processing</p>
+                <a href="#menu" class="btn">Order Now</a>
+            </div>
+            <div class="home-img">
+                <img src="https://i.pinimg.com/originals/be/a2/96/bea29611267f4387de7b3cee8fbb1d8b.png" alt="chef image">
+            </div>
+        </section>
+
+        <!-- SERVICES SECTION -->
+        <section class="services" id="services">
+            <div class="heading">
+                <p>What we serve</p>
+                <h2>Your Favorite Food <br>Delivery Partner</h2>
+            </div>
+
+            <div class="services-container">
+                <div class="box">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ06cQZXvE0DE60SKuEpqVkkihppcqRq6zy8vO8IXuNmUdlFhr8-WG-srnHeGZLqD9NTq8&usqp=CAU" alt="order image">
+                    <h2>Easy to Order</h2>
+                    <p>We ensure that your personal chef has a system in place for quick order preparation</p>
+                </div>
+                <div class="box">
+                    <img src="https://d1csarkz8obe9u.cloudfront.net/posterpreviews/food-delivery-logo-design-template-5997896464b733d7a04807aebd739df2_screen.jpg?ts=1628241737" alt="ship image">
+                    <h2>Fastest Delivery</h2>
+                    <p>This includes readiness to handle peak times and using efficient cooking methods</p>
+                </div>
+                <div class="box">
+                    <img src="https://i.pinimg.com/736x/b4/b1/c9/b4b1c9061c18ca341d61e55ffc730c87.jpg" alt="deliver image">
+                    <h2>Best Quality</h2>
+                    <p>We use spill-proof and sturdy containers to keep food intact during transit</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- MENU SECTION -->
+        <section class="menu" id="menu">
+            <div class="heading">
+                <p>Special Menu</p>
+                <h2>Delicious Dishes for You</h2>
+            </div>
+
+            <div class="search-box">
+                <i class='bx bx-search'></i>
+                <input type="text" id="food-search" placeholder="Search dishes by name...">
+            </div>
+
+            <div class="filter-controls">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="veg">Vegetarian</button>
+                    <button class="filter-btn" data-filter="nonveg">Non-Vegetarian</button>
+                </div>
+                <div class="sort-box">
+                    <label for="price-sort">Sort By Price: </label>
+                    <select id="price-sort">
+                        <option value="default">Default</option>
+                        <option value="low-to-high">Low to High</option>
+                        <option value="high-to-low">High to Low</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="menu-container" id="menu-container">
+                <p class="loading-text">Loading fresh dishes...</p>
+            </div>
+        </section>
+
+        <!-- OUR CHEFS SECTION -->
+        <section class="chefs" id="chefs">
+            <div class="heading">
+                <p>Our Chefs</p>
+                <h1>Our Awesome Chefs</h1>
+            </div>
+            <div class="chefs-container">
+                <div class="chef-box">
+                    <img src="https://img.freepik.com/premium-psd/chef-holding-bowl-pasta-bowl-pasta_1294447-5160.jpg?w=740" alt="chef image">
+                    <div class="text">
+                        <h2>Charan kumar</h2>
+                        <p>With a passion for Asian cuisine, charan kumar participated in the last International Chinese Culinary Competition in Vancouver.</p>
+                        <a href="#contact" class="btn">Hire Now</a>
+                    </div>
+                </div>
+                <div class="chef-box">
+                    <img src="https://img.freepik.com/premium-vector/professional-male-chef-cartoon-design-vector-illustration_1322206-66154.jpg?w=740" alt="chef image">
+                    <div class="text">
+                        <h2>Arvind</h2>
+                        <p>With a desire for competition, Arvind participated in many chef competitions, including MasterChef España.</p>
+                        <a href="#contact" class="btn">Hire Now</a>
+                    </div>
+                </div>
+                <div class="chef-box">
+                    <img src="https://png.pngtree.com/png-clipart/20240614/original/pngtree-cartoon-female-chef-holding-cooking-dish-png-image_15328195.png" alt="chef image">
+                    <div class="text">
+                        <h2>Rithu Kumari</h2>
+                        <p>With in-depth culinary knowledge of 20 years, Rithu Kumari has taken on roles as a mentor and teacher in cooking.</p>
+                        <a href="#contact" class="btn">Hire Now</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONTACT SECTION -->
+        <section class="contact" id="contact">
+            <div class="heading">
+                <p>Have Any Questions?</p>
+                <h2>Contact Us</h2>
+            </div>
+            <div class="contact-form">
+                <form action>
+                    <input type="text" placeholder="Your Name">
+                    <input type="email" placeholder="Enter your email">
+                    <textarea cols="30" rows="10" placeholder="Write Your Message Here"></textarea>
+                    <input type="button" value="Send" class="contact-button">
+                </form>
+            </div>
+        </section>
+
+        <div class="copyright">
+            <p>&#169; All Rights Reserved - MY KITCHEN</p>
+        </div>
+
+        <!-- FLOATING RED CART TRIGGER BUTTON -->
+        <div class="cart-icon" id="cart-icon">
+            <i class='bx bx-shopping-bag'></i>
+            <span class="cart-count" id="cart-count">0</span>
+        </div>
+
+        <!-- YOUR ORDER & BILL POPUP MODAL (Triggers when clicking red count icon) -->
+        <div class="custom-modal-overlay" id="cart-modal-overlay">
+            <div class="cart-drawer-modal">
+                <div class="cart-header">
+                    <h3>Your Order & Bill</h3>
+                    <i class='bx bx-x' id="close-cart" style="cursor: pointer; font-size: 1.5rem;"></i>
+                </div>
+                
+                <div class="cart-items" id="cart-items">
+                    <p class="empty-msg">Your cart is empty.</p>
+                </div>
+
+                <!-- CHECKOUT CUSTOMER DETAILS FORM -->
+                <div class="checkout-details-form">
+                    <h4>Delivery Details</h4>
+                    <input type="text" id="cust-name" placeholder="Full Name" required>
+                    <input type="tel" id="cust-phone" placeholder="Phone Number (+91...)" required>
+                    <textarea id="cust-address" placeholder="Complete Delivery Address" rows="2" required></textarea>
+                </div>
+
+                <div class="cart-footer">
+                    <div class="bill-summary">
+                        <div class="bill-row"><span>Subtotal:</span><span id="bill-subtotal">₹0.00</span></div>
+                        <div class="bill-row"><span>GST (5%):</span><span id="bill-gst">₹0.00</span></div>
+                        <div class="bill-row total"><span>Grand Total:</span><span id="total-price">₹0.00</span></div>
+                    </div>
+                    <button class="checkout-btn" id="checkout-btn">Pay & Place Order</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTOM RECEIPT POPUP MODAL -->
+        <div class="custom-modal-overlay" id="order-modal">
+            <div class="custom-modal" style="max-width: 450px;">
+                <div id="receipt-printable" class="receipt-box">
+                    <div class="receipt-header">
+                        <h2>MY KITCHEN</h2>
+                        <p>123 Gourmet Street, Foodville</p>
+                        <p>GSTIN: 36AABCM1234F1ZB</p>
+                        <hr style="border: 1px dashed #000;">
+                        <p><strong>Order ID:</strong> <span id="receipt-id">#ORD-0000</span></p>
+                        <p><strong>Customer:</strong> <span id="receipt-name">Name</span> (<span id="receipt-phone">Phone</span>)</p>
+                    </div>
+                    
+                    <table class="receipt-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receipt-items-body">
+                            <!-- Items inserted dynamically -->
+                        </tbody>
+                    </table>
+
+                    <div class="receipt-footer">
+                        <div class="bill-row"><span>Items Subtotal:</span><span id="receipt-subtotal">₹0.00</span></div>
+                        <div class="bill-row"><span>CGST (2.5%):</span><span id="receipt-cgst">₹0.00</span></div>
+                        <div class="bill-row"><span>SGST (2.5%):</span><span id="receipt-sgst">₹0.00</span></div>
+                        <div class="bill-row total"><span>Total Paid:</span><span id="receipt-grandtotal">₹0.00</span></div>
+                        <p style="text-align:center; margin-top:10px; font-size:0.8rem;">*** Thank you for dining with MY KITCHEN! ***</p>
+                    </div>
+                </div>
+                <button class="print-btn" onclick="printReceipt()"><i class='bx bx-printer'></i> Print / Save Receipt</button>
+                <button class="btn" id="close-modal-btn" style="margin-top:10px; width:100%;">Continue Ordering</button>
+            </div>
+        </div>
+
+        <!-- TOAST NOTIFICATION CONTAINER -->
+        <div id="toast-container"></div>
+
+        <!-- SCRIPTS -->
+        <script>
+            // Clean Print Window Function for Receipt
+            function printReceipt() {
+                const receiptContent = document.getElementById('receipt-printable').innerHTML;
+                const printWindow = window.open('', '', 'height=600,width=450');
+                
+                printWindow.document.write('<html><head><title>Receipt - MY KITCHEN</title>');
+                printWindow.document.write(`
+                    <style>
+                        body {
+                            font-family: 'Courier New', monospace;
+                            padding: 20px;
+                            color: #000;
+                            background: #fff;
+                        }
+                        .receipt-box { width: 100%; max-width: 400px; margin: 0 auto; }
+                        .receipt-header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .receipt-header h2 { margin: 0 0 5px 0; font-size: 1.5rem; }
+                        .receipt-header p { margin: 2px 0; font-size: 0.85rem; }
+                        .receipt-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                        .receipt-table th, .receipt-table td { text-align: left; padding: 5px 0; border-bottom: 1px dashed #ccc; font-size: 0.85rem; }
+                        .receipt-table th:last-child, .receipt-table td:last-child { text-align: right; }
+                        .bill-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; }
+                        .bill-row.total { font-weight: bold; font-size: 1rem; border-top: 2px solid #000; padding-top: 5px; margin-top: 5px; }
+                        .receipt-footer { border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; }
+                    </style>
+                `);
+                printWindow.document.write('</head><body>');
+                printWindow.document.write('<div class="receipt-box">' + receiptContent + '</div>');
+                printWindow.document.write('</body></html>');
+                
+                printWindow.document.close();
+                printWindow.focus();
+                
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 250);
+            }
+
+            // Secret Keyboard Shortcut: Ctrl + Shift + A
+            document.addEventListener('keydown', function(event) {
+                if (event.ctrlKey && event.shiftKey && (event.key === 'A' || event.key === 'a')) {
+                    window.location.href = "/admin/login?key=mysecretkitchen123";
+                }
+            });
+
+            // Secret Logo Trigger: Triple-click "MY KITCHEN" logo
+            let clickCount = 0;
+            const logo = document.querySelector('.logo');
+            if (logo) {
+                logo.addEventListener('click', function(e) {
+                    clickCount++;
+                    if (clickCount === 3) {
+                        e.preventDefault();
+                        window.location.href = "/admin/login?key=mysecretkitchen123";
+                    }
+                    setTimeout(() => { clickCount = 0; }, 1000);
+                });
+            }
+        </script>
+    </body>
+</html>

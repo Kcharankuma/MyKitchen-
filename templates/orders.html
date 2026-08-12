@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Orders - MY KITCHEN</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .orders-container { padding: 100px 10%; }
+        .order-card { background: #fff4f3; padding: 20px; border-radius: 1rem; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .status-tag { padding: 6px 14px; border-radius: 20px; background: var(--main-color); color: #fff; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="logo">MY KITCHEN</a>
+        <a href="/" class="btn">Back to Menu</a>
+    </header>
+    <div class="orders-container">
+        <h2>My Order History & Live Tracking</h2>
+        <br>
+        {% for order in orders %}
+        <div class="order-card">
+            <div>
+                <h3>Order #{{ order.order_number }}</h3>
+                <p>Total Paid: ₹{{ order.total_amount }}</p>
+                <p><small>{{ order.customer_address }}</small></p>
+            </div>
+            <div>
+                <span class="status-tag">{{ order.status }}</span>
+            </div>
+        </div>
+        {% else %}
+        <p>You haven't placed any orders yet.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

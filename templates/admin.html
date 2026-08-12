@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>MY KITCHEN - Admin Dashboard</title>
+        <link rel="stylesheet"
+            href="{{ url_for('static', filename='style.css') }}">
+        <style>
+        .admin-container { padding: 100px 10% 40px; }
+        .admin-section { margin-bottom: 40px; background: #fff4f3; padding: 25px; border-radius: 1rem; }
+        
+        /* Stats Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 35px; }
+        .stat-card { background: #fff; padding: 20px; border-radius: 1rem; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .stat-card h3 { color: #777; font-size: 0.9rem; font-weight: 500; }
+        .stat-card h2 { color: var(--main-color); font-size: 1.8rem; margin-top: 5px; }
+
+        /* Tables & Forms */
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 0.5rem; overflow: hidden; }
+        .admin-table th, .admin-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .admin-table th { background: var(--main-color); color: #fff; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+        .form-grid input, .form-grid select, .form-grid textarea { padding: 10px; border: 1px solid #ccc; border-radius: 0.5rem; outline: none; }
+        .delete-btn { color: #c62828; font-weight: 600; }
+        .status-select { padding: 5px 8px; border-radius: 6px; border: 1px solid #ddd; outline: none; }
+    </style>
+    </head>
+    <body>
+        <header>
+            <a href="/" class="logo">MY KITCHEN (Admin)</a>
+            <div>
+                <a href="/" class="btn">View Website</a>
+                <a href="/logout" class="btn"
+                    style="background:#2f2f2f; margin-left:10px;">Logout</a>
+            </div>
+        </header>
+
+        <div class="admin-container">
+            <!-- ANALYTICS CARDS -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Revenue</h3>
+                    <h2>₹{{ total_sales }}</h2>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Orders</h3>
+                    <h2>{{ total_orders }}</h2>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Menu Dishes</h3>
+                    <h2>{{ total_dishes }}</h2>
+                </div>
+            </div>
+
+            <!-- ADD NEW ITEM -->
+            <div class="admin-section">
+                <h2>Add New Food Item</h2>
+                <form action="/admin/add" method="POST" class="form-grid">
+                    <input type="text" name="title" placeholder="Dish Name"
+                        required>
+                    <select name="category" required>
+                        <option value="veg">Vegetarian</option>
+                        <option value="nonveg">Non-Vegetarian</option>
+                    </select>
+                    <input type="number" name="price" placeholder="Price (₹)"
+                        required>
+                    <input type="url" name="image" placeholder="Image URL"
+                        required>
+                    <textarea name="description" placeholder="Description"
+                        style="grid-column: 1 / -1;" required></textarea>
+                    <button type="submit" class="btn"
+                        style="border:none; cursor:pointer;">Add Item</button>
+                </form>
+            </div>
+
+            <!-- CUSTOMER ORDERS TABLE -->
+            <div class="admin-section">
+                <h2>Customer Orders Received ({{ orders|length }})</h2>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer Details</th>
+                            <th>Total Amount</th>
+                            <th>Current Status</th>
+                            <th>Change Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td><strong>{{ order.order_number }}</strong></td>
+                            <td>
+                                <strong>{{ order.customer_name }}</strong><br>
+                                <small>{{ order.customer_phone }}</small><br>
+                                <small style="color:#666;">{{
+                                    order.customer_address }}</small>
+                            </td>
+                            <td>₹{{ order.total_amount }}</td>
+                            <td>
+                                <span
+                                    style="padding: 4px 10px; border-radius: 12px; background: #feeceb; color: var(--main-color); font-weight: 600; font-size: 0.8rem;">
+                                    {{ order.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <form
+                                    action="{{ url_for('update_order_status', order_id=order.id) }}"
+                                    method="POST">
+                                    <select name="status"
+                                        onchange="this.form.submit()">
+                                        <option value="Pending" {% if
+                                            order.status == 'Pending'
+                                            %}selected{% endif
+                                            %}>Pending</option>
+                                        <option value="Preparing" {% if
+                                            order.status == 'Preparing'
+                                            %}selected{% endif
+                                            %}>Preparing</option>
+                                        <option value="Out for Delivery" {% if
+                                            order.status == 'Out for Delivery'
+                                            %}selected{% endif %}>Out for
+                                            Delivery</option>
+                                        <option value="Delivered" {% if
+                                            order.status == 'Delivered'
+                                            %}selected{% endif
+                                            %}>Delivered</option>
+                                        <option value="Cancelled" {% if
+                                            order.status == 'Cancelled'
+                                            %}selected{% endif
+                                            %}>Cancelled</option>
+                                    </select>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5">No orders placed yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- MANAGE MENU ITEMS -->
+            <div class="admin-section">
+                <h2>Manage Menu Items ({{ items|length }})</h2>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.title }}</td>
+                            <td><span
+                                    class="badge {{ 'veg-badge' if item.category == 'veg' else 'nonveg-badge' }}">{{
+                                    item.category|upper }}</span></td>
+                            <td>₹{{ item.price }}</td>
+                            <td><a href="/admin/delete/{{ item.id }}"
+                                    class="delete-btn"
+                                    onclick="return confirm('Delete item?')">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>

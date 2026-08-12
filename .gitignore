@@ -1,0 +1,10 @@
+# Python temporary files
+__pycache__/
+*.pyc
+
+# Environment & API keys
+.env
+venv/
+
+# Local Database (Optional: skip if you don't want your local data on GitHub)
+*.db
