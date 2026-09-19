@@ -9,9 +9,6 @@ from twilio.rest import Client
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'super_secret_kitchen_key_123')
 
-# --- ADMIN SECRET CONFIGURATION ---
-ADMIN_SECRET_KEY = os.getenv('ADMIN_SECRET_KEY', 'mysecretkitchen123')
-
 # --- DATABASE CONFIGURATION (Vercel Read-Only Fix) ---
 if os.getenv('VERCEL'):
     db_path = '/tmp/kitchen.db'
@@ -72,7 +69,6 @@ def seed_database():
         db.session.bulk_save_objects(initial_items)
         db.session.commit()
 
-# Ensure database tables exist safely before requests
 @app.before_request
 def initialize_database():
     db.create_all()
@@ -121,7 +117,6 @@ def send_order_sms(order_number, total, phone_number):
             to=formatted_phone
         )
     except Exception as e:
-        # Catches Error 572006 or failed credentials safely without crashing the app
         print(f"Order SMS Error: {e}")
 
 # --- FRONTEND & AUTH ROUTES ---
@@ -183,10 +178,42 @@ def my_orders():
     orders = Order.query.filter_by(user_id=session['user_id']).order_by(Order.id.desc()).all()
     return render_template('orders.html', orders=orders)
 
+# --- ADMIN ROUTES (Direct Access Without URL Key) ---
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username == 'admin' and password == 'adminpassword':
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_panel'))
+        else:
+            error = 'Invalid Admin Credentials!'
+            
+    return render_template('auth.html', error=error, mode='login', is_admin=True)
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('home'))
+
+@app.route('/admin')
+def admin_panel():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+        
+    items = MenuItem.query.all()
+    orders = Order.query.order_by(Order.id.desc()).all()
+    total_sales = sum(o.total_amount for o in orders)
+    
+    return render_template('admin.html', items=items, orders=orders, total_sales=total_sales, total_orders=len(orders), total_dishes=len(items))
+
 @app.route('/admin/order/status/<int:order_id>', methods=['POST'])
 def update_order_status(order_id):
     if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login', key=ADMIN_SECRET_KEY))
+        return redirect(url_for('admin_login'))
     
     order = Order.query.get_or_404(order_id)
     status = request.form.get('status')
@@ -258,7 +285,6 @@ def place_order():
     db.session.add(new_order)
     db.session.commit()
 
-    # Safely triggers SMS notification
     send_order_sms(order_num, grand_total, phone)
 
     return jsonify({
@@ -272,42 +298,6 @@ def place_order():
         "customerPhone": phone,
         "customerAddress": address
     })
-
-# --- ADMIN ROUTES ---
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
-    access_key = request.args.get('key') or request.form.get('secret_key')
-    if access_key != ADMIN_SECRET_KEY and not session.get('admin_logged_in'):
-        return "Not Found: The requested URL was not found on the server.", 404
-
-    error = None
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if username == 'admin' and password == 'adminpassword':
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin_panel'))
-        else:
-            error = 'Invalid Admin Credentials!'
-            
-    return render_template('auth.html', error=error, mode='login', is_admin=True, secret_key=ADMIN_SECRET_KEY)
-
-@app.route('/admin/logout')
-def admin_logout():
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('home'))
-
-@app.route('/admin')
-def admin_panel():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login', key=ADMIN_SECRET_KEY))
-        
-    items = MenuItem.query.all()
-    orders = Order.query.order_by(Order.id.desc()).all()
-    total_sales = sum(o.total_amount for o in orders)
-    
-    return render_template('admin.html', items=items, orders=orders, total_sales=total_sales, total_orders=len(orders), total_dishes=len(items))
 
 if __name__ == "__main__":
     app.run()
