@@ -224,6 +224,58 @@ def send_delivered_email(order):
     except Exception as e:
         print(f"Delivered Email Error: {e}")
 
+
+def _send_gmail_html(recipient_email, subject, html_body):
+    sender_email = os.getenv('SMTP_EMAIL')
+    sender_password = os.getenv('SMTP_PASSWORD')
+    if not recipient_email or not sender_email or not sender_password:
+        return
+    msg = MIMEMultipart()
+    msg['From'] = f"MY KITCHEN <{sender_email}>"
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(html_body, 'html'))
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=5) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+    except Exception:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=5) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+
+def send_order_email(order):
+    try:
+        recipient_email = order.customer_email
+        if not recipient_email and order.user_id:
+            user = db.session.get(User, order.user_id)
+            if user:
+                recipient_email = user.email
+        if not recipient_email:
+            return
+        items_list = json.loads(order.items_json) if order.items_json else []
+        items_html = "".join(f"<li>{i['title']} (x{i['qty']}) - Rs. {i['price'] * i['qty']:.2f}</li>" for i in items_list)
+        half_gst = order.gst_amount / 2
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
+            <h2 style="color: #ff5252;">MY KITCHEN - Order Confirmed!</h2>
+            <p>Hi <strong>{order.customer_name}</strong>, thank you for your order <strong>#{order.order_number}</strong>.</p>
+            <ul>{items_html}</ul>
+            <p>Items Subtotal: Rs. {order.subtotal:.2f}<br>
+            CGST (2.5%): Rs. {half_gst:.2f}<br>
+            SGST (2.5%): Rs. {half_gst:.2f}<br>
+            <strong>Total Paid: Rs. {order.total_amount:.2f}</strong></p>
+            <p>Delivery Address: {order.customer_address}</p>
+        </div>
+        """
+        _send_gmail_html(recipient_email, f"Order #{order.order_number} Confirmed - MY KITCHEN", html_body)
+        print(f"[Order Email Sent] to {recipient_email}")
+    except Exception as e:
+        print(f"Order Email Error: {e}")
+
 # --- FRONTEND & AUTH ROUTES ---
 @app.route('/')
 def home():
@@ -481,8 +533,11 @@ def place_order():
     db.session.add(new_order)
     db.session.commit()
 
-    send_order_sms(order_num, grand_total, phone)
-    send_order_email(new_order)
+    try:
+        send_order_sms(order_num, grand_total, phone)
+        send_order_email(new_order)
+    except Exception as e:
+        print(f'Notification Error: {e}')
 
     return jsonify({
         "success": True,
