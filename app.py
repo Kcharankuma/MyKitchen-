@@ -529,7 +529,7 @@ def admin_add_item():
         category = request.form.get('category')
         description = request.form.get('description')
         price = int(request.form.get('price', 0))
-        image = get_valid_food_image(title, request.form.get('image'))
+        image = get_valid_food_image(title, clean_image_url(request.form.get('image')))
 
         new_dish = MenuItem(title=title, category=category, description=description, price=price, image=image)
         db.session.add(new_dish)
