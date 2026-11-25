@@ -584,8 +584,9 @@ def admin_delete_item(item_id):
         return redirect(url_for('admin_login'))
     
     item = MenuItem.query.get(item_id)
-    db.session.delete(item)
-    db.session.commit()
+    if item:
+        db.session.delete(item)
+        db.session.commit()
     return redirect(url_for('admin_panel'))
 
 @app.route('/admin/order/status/<int:order_id>', methods=['POST'])
