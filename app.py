@@ -322,6 +322,14 @@ def register():
             return redirect(url_for('home'))
     return render_template('auth.html', error=error, mode='register', is_admin=False)
 
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    session.pop('user_name', None)
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('home'))
+
 @app.route('/customer/logout')
 def customer_logout():
     session.pop('user_id', None)
