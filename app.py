@@ -66,6 +66,28 @@ class ContactInquiry(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # --- SEED DATABASE ---
+
+DEFAULT_FOOD_IMAGE = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
+FOOD_FALLBACKS = {
+    'dosa': 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=600&q=80',
+    'biryani': 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=600&q=80',
+    'paneer': 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=600&q=80',
+    'chicken': 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80',
+    'idli': 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
+    'momo': 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80',
+    'salad': 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80'
+}
+
+def get_valid_food_image(title, image_url):
+    url = (image_url or '').strip()
+    if not url.startswith('http') or 'google.com/url' in url or 'gstatic.com' in url or 'encrypted-tbn' in url:
+        lower_title = (title or '').lower()
+        for keyword, fallback_url in FOOD_FALLBACKS.items():
+            if keyword in lower_title:
+                return fallback_url
+        return DEFAULT_FOOD_IMAGE
+    return url
+
 def seed_database():
     if MenuItem.query.count() == 0:
         initial_items = [
@@ -312,7 +334,7 @@ def admin_add_item():
         category = request.form.get('category')
         description = request.form.get('description')
         price = int(request.form.get('price', 0))
-        image = request.form.get('image')
+        image = get_valid_food_image(title, request.form.get('image'))
 
         new_dish = MenuItem(title=title, category=category, description=description, price=price, image=image)
         db.session.add(new_dish)
@@ -350,7 +372,7 @@ def admin_add_item():
                 <label>Price (Rs.):</label>
                 <input type="number" name="price" placeholder="320" required>
                 <label>Image URL:</label>
-                <input type="text" name="image" placeholder="https://images.unsplash.com/..." required>
+                <input type="text" name="image" placeholder="Leave blank for auto food image or paste URL">
                 <div>
                     <button type="submit" class="btn-submit">Add Dish</button>
                     <a href="/admin" class="cancel-link">Cancel</a>
