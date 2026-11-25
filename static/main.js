@@ -43,7 +43,7 @@ function renderMenuItems(items) {
     container.innerHTML = items.map(item => `
         <div class="menu-box">
             <div class="menu-img">
-                <img src="${item.image}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'https://images.unsplash.com/photo-1630383249896-424e482df921?auto=format&fit=crop&w=600&q=80\';" alt="${item.title}">
+                <img src="${item.image}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'https://images.unsplash.com/photo-1630383249896-424e482df921?auto=format&fit=crop&w=600&q=80\';" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'https://images.unsplash.com/photo-1630383249896-424e482df921?auto=format&fit=crop&w=600&q=80\';" alt="${item.title}">
             </div>
             <div class="text">
                 <h3>${item.title}</h3>
