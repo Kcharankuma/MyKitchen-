@@ -339,6 +339,15 @@ def send_delivered_notifications(order):
     _send_gmail_html(recipient_email, f"Order #{order.order_number} Delivered! - MY KITCHEN", html_body)
 
 # --- FRONTEND & AUTH ROUTES ---
+    raw_url = str(raw_url).strip()
+    if "imgurl=" in raw_url:
+        parsed = parse_qs(urlparse(raw_url).query)
+        if "imgurl" in parsed and parsed["imgurl"]:
+            return unquote(parsed["imgurl"][0])
+    if raw_url.startswith(("http://", "https://", "/static/")):
+        return raw_url
+    return default_img
+
 def clean_image_url(raw_url):
     from urllib.parse import urlparse, parse_qs, unquote
     default_img = "https://images.unsplash.com/photo-1630383249896-424e482df921?auto=format&fit=crop&w=600&q=80"
@@ -543,7 +552,7 @@ def admin_add_item():
         category = request.form.get('category')
         description = request.form.get('description')
         price = int(request.form.get('price', 0))
-        image = get_valid_food_image(title, clean_image_url(clean_image_url(request.form.get('image'))))
+        image = get_valid_food_image(title, clean_image_url(request.form.get('image'))))
 
         new_dish = MenuItem(title=title, category=category, description=description, price=price, image=image)
         db.session.add(new_dish)
