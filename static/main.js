@@ -381,68 +381,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// --- AUTO-WIRE CONTACT US FORM ---
+// --- UNIFIED CONTACT US HANDLER (EMAILS CUSTOMER + ADMIN) ---
 document.addEventListener('DOMContentLoaded', () => {
-    const contactForm = document.getElementById('dynamic-contact-form') || document.querySelector('.contact-form form, #contact form');
-    if (contactForm) {
-        contactForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const inputs = contactForm.querySelectorAll('input:not([type="submit"]):not([type="button"]), textarea');
-            const name = (document.getElementById('contact-name')?.value || inputs[0]?.value || '').trim();
-            const email = (document.getElementById('contact-email')?.value || inputs[1]?.value || '').trim();
-            const phone = (document.getElementById('contact-phone')?.value || inputs[2]?.value || '').trim();
-            const message = (document.getElementById('contact-msg')?.value || document.getElementById('contact-message')?.value || contactForm.querySelector('textarea')?.value || '').trim();
-
-            if (!name || !email || !message) {
-                alert('Please fill in all fields before sending.');
-                return;
-            }
-
-            const btn = contactForm.querySelector('button[type="submit"], input[type="submit"], .contact-button');
-            const origText = btn ? (btn.value || btn.innerText) : 'Send';
-            if (btn) {
-                btn.disabled = true;
-                if ('value' in btn) btn.value = 'Sending...';
-                else btn.innerText = 'Sending...';
-            }
-
-            try {
-                const res = await fetch('/api/contact', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, phone, message })
-                });
-                const data = await res.json();
-                alert(data.message || 'Thank you! Your message has been sent.');
-                if (data.success) contactForm.reset();
-            } catch (err) {
-                alert('Could not send message right now. Please try again.');
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    if ('value' in btn) btn.value = origText;
-                    else btn.innerText = origText;
-                }
-            }
-        });
-    }
-});
-
-
-// --- ROBUST CONTACT US HANDLER ---
-document.addEventListener('DOMContentLoaded', () => {
-    const contactSection = document.getElementById('contact') || document.querySelector('.contact, .contact-section, .contact-form');
+    const contactSection = document.getElementById('contact') || document.querySelector('.contact, .contact-form');
     if (!contactSection) return;
 
-    const submitContact = async (e) => {
+    // Clone form/button to strip any leftover duplicate event listeners
+    const oldForm = contactSection.querySelector('form');
+    const targetContainer = oldForm || contactSection;
+
+    const handleContactSubmit = async (e) => {
         if (e) e.preventDefault();
 
-        const inputs = Array.from(contactSection.querySelectorAll('input:not([type="submit"]):not([type="button"])'));
-        const textarea = contactSection.querySelector('textarea');
+        const textInputs = Array.from(targetContainer.querySelectorAll('input:not([type="submit"]):not([type="button"])'));
+        const textarea = targetContainer.querySelector('textarea');
 
-        const name = (document.getElementById('contact-name')?.value || inputs[0]?.value || '').trim();
-        const email = (document.getElementById('contact-email')?.value || inputs[1]?.value || '').trim();
-        const phone = (document.getElementById('contact-phone')?.value || inputs[2]?.value || '').trim();
+        const name = (document.getElementById('contact-name')?.value || textInputs[0]?.value || '').trim();
+        const email = (document.getElementById('contact-email')?.value || textInputs[1]?.value || '').trim();
         const message = (document.getElementById('contact-msg')?.value || document.getElementById('contact-message')?.value || textarea?.value || '').trim();
 
         if (!name || !email || !message) {
@@ -450,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const btn = contactSection.querySelector('button, input[type="submit"], .contact-button, .btn');
+        const btn = targetContainer.querySelector('button, input[type="submit"], .contact-button, .btn');
         const origText = btn ? (btn.value || btn.innerText) : 'Send';
         if (btn) {
             btn.disabled = true;
@@ -462,16 +417,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/contact', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, phone, message })
+                body: JSON.stringify({ name, email, message })
             });
             const data = await res.json();
-            alert(data.message || 'Thank you! Your question has been submitted.');
+            alert(data.message || 'Thank you! Your message has been sent to us and a copy was emailed to you.');
             if (data.success) {
-                inputs.forEach(i => i.value = '');
+                textInputs.forEach(i => i.value = '');
                 if (textarea) textarea.value = '';
             }
         } catch (err) {
-            alert('Error sending message. Please try again.');
+            alert('Network error while sending message. Please try again.');
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -481,12 +436,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const form = contactSection.querySelector('form');
-    if (form) {
-        form.onsubmit = submitContact;
-    }
-    const btn = contactSection.querySelector('button, input[type="submit"], .contact-button, .btn');
-    if (btn && (!form || btn.type !== 'submit')) {
-        btn.onclick = submitContact;
+    if (oldForm) {
+        const freshForm = oldForm.cloneNode(true);
+        oldForm.parentNode.replaceChild(freshForm, oldForm);
+        freshForm.addEventListener('submit', handleContactSubmit);
+    } else {
+        const btn = targetContainer.querySelector('button, input[type="submit"], .contact-button, .btn');
+        if (btn) {
+            const freshBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(freshBtn, btn);
+            freshBtn.addEventListener('click', handleContactSubmit);
+        }
     }
 });
