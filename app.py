@@ -283,7 +283,13 @@ def send_order_email(order):
 # --- FRONTEND & AUTH ROUTES ---
 @app.route('/')
 def home():
-    user = User.query.get(session.get('user_id')) if session.get('user_id') else None
+    if not session.get('user_id'):
+        return redirect(url_for('customer_login'))
+    user = db.session.get(User, session.get('user_id'))
+    if not user:
+        session.pop('user_id', None)
+        session.pop('user_name', None)
+        return redirect(url_for('customer_login'))
     return render_template('index.html', user=user)
 
 @app.route('/customer/login', methods=['GET', 'POST'])
@@ -332,7 +338,7 @@ def logout():
     session.pop('user_id', None)
     session.pop('user_name', None)
     session.pop('admin_logged_in', None)
-    return redirect(url_for('home'))
+    return redirect(url_for('customer_login'))
 
 @app.route('/customer/logout')
 def customer_logout():

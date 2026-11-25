@@ -351,3 +351,31 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
+
+
+// --- AUTO-FILL LOGGED-IN CUSTOMER DELIVERY DETAILS ---
+async function fillLoggedInCustomerDetails() {
+    try {
+        const res = await fetch('/api/user-data');
+        const data = await res.json();
+        if (data.logged_in) {
+            const nameEl = document.getElementById('cust-name');
+            const phoneEl = document.getElementById('cust-phone');
+            const emailEl = document.getElementById('cust-email');
+            const addrEl = document.getElementById('cust-address');
+
+            if (nameEl && data.name) nameEl.value = data.name;
+            if (phoneEl && data.phone) phoneEl.value = data.phone;
+            if (emailEl && data.email) emailEl.value = data.email;
+            if (addrEl && data.address) addrEl.value = data.address;
+        }
+    } catch (e) {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    fillLoggedInCustomerDetails();
+    const cartIconBtn = document.getElementById('cart-icon');
+    if (cartIconBtn) {
+        cartIconBtn.addEventListener('click', fillLoggedInCustomerDetails);
+    }
+});
