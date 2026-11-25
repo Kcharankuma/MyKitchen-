@@ -427,3 +427,66 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+// --- ROBUST CONTACT US HANDLER ---
+document.addEventListener('DOMContentLoaded', () => {
+    const contactSection = document.getElementById('contact') || document.querySelector('.contact, .contact-section, .contact-form');
+    if (!contactSection) return;
+
+    const submitContact = async (e) => {
+        if (e) e.preventDefault();
+
+        const inputs = Array.from(contactSection.querySelectorAll('input:not([type="submit"]):not([type="button"])'));
+        const textarea = contactSection.querySelector('textarea');
+
+        const name = (document.getElementById('contact-name')?.value || inputs[0]?.value || '').trim();
+        const email = (document.getElementById('contact-email')?.value || inputs[1]?.value || '').trim();
+        const phone = (document.getElementById('contact-phone')?.value || inputs[2]?.value || '').trim();
+        const message = (document.getElementById('contact-msg')?.value || document.getElementById('contact-message')?.value || textarea?.value || '').trim();
+
+        if (!name || !email || !message) {
+            alert('Please fill in your Name, Email, and Message.');
+            return;
+        }
+
+        const btn = contactSection.querySelector('button, input[type="submit"], .contact-button, .btn');
+        const origText = btn ? (btn.value || btn.innerText) : 'Send';
+        if (btn) {
+            btn.disabled = true;
+            if ('value' in btn) btn.value = 'Sending...';
+            else btn.innerText = 'Sending...';
+        }
+
+        try {
+            const res = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, phone, message })
+            });
+            const data = await res.json();
+            alert(data.message || 'Thank you! Your question has been submitted.');
+            if (data.success) {
+                inputs.forEach(i => i.value = '');
+                if (textarea) textarea.value = '';
+            }
+        } catch (err) {
+            alert('Error sending message. Please try again.');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                if ('value' in btn) btn.value = origText;
+                else btn.innerText = origText;
+            }
+        }
+    };
+
+    const form = contactSection.querySelector('form');
+    if (form) {
+        form.onsubmit = submitContact;
+    }
+    const btn = contactSection.querySelector('button, input[type="submit"], .contact-button, .btn');
+    if (btn && (!form || btn.type !== 'submit')) {
+        btn.onclick = submitContact;
+    }
+});
