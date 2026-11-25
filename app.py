@@ -1,6 +1,10 @@
 import os
 import random
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -53,6 +57,14 @@ class Order(db.Model):
     payment_status = db.Column(db.String(20), default="Paid (Simulated)")
     status = db.Column(db.String(20), default="Pending")
 
+class ContactInquiry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 # --- SEED DATABASE ---
 def seed_database():
     if MenuItem.query.count() == 0:
@@ -74,7 +86,7 @@ def initialize_database():
     db.create_all()
     seed_database()
 
-# --- TWILIO SMS HELPER FUNCTIONS ---
+# --- TWILIO SMS & EMAIL HELPER FUNCTIONS ---
 def format_phone_number(phone):
     if not phone:
         return None
@@ -118,6 +130,77 @@ def send_order_sms(order_number, total, phone_number):
         )
     except Exception as e:
         print(f"Order SMS Error: {e}")
+
+def send_delivered_sms(order):
+    formatted_phone = format_phone_number(order.customer_phone)
+    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+    twilio_phone = os.getenv('TWILIO_PHONE_NUMBER', '+17372508034')
+
+    if not formatted_phone or not account_sid or not auth_token:
+        print(f"[SMS Mock] Delivered SMS skipped (Twilio keys missing) for {order.order_number}")
+        return
+    try:
+        client = Client(account_sid, auth_token)
+        client.messages.create(
+            body=f"MY KITCHEN: Hi {order.customer_name}, your Order #{order.order_number} (Rs. {order.total_amount:.2f}) has been DELIVERED! Enjoy your meal!",
+            from_=twilio_phone,
+            to=formatted_phone
+        )
+        print(f"Delivered SMS sent to {formatted_phone}")
+    except Exception as e:
+        print(f"Delivered SMS Error: {e}")
+
+def send_delivered_email(order):
+    # Get recipient email from Order, or fallback to linked User account email
+    recipient_email = order.customer_email
+    if not recipient_email and order.user_id:
+        user = User.query.get(order.user_id)
+        if user:
+            recipient_email = user.email
+
+    sender_email = os.getenv('SMTP_EMAIL')        # Your Gmail address
+    sender_password = os.getenv('SMTP_PASSWORD')  # Your 16-char Gmail App Password
+
+    if not recipient_email or not sender_email or not sender_password:
+        print(f"[Email Mock] Delivered Email skipped (Email/SMTP missing) for {order.order_number}")
+        return
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"MY KITCHEN <{sender_email}>"
+        msg['To'] = recipient_email
+        msg['Subject'] = f"Order #{order.order_number} Delivered! - MY KITCHEN"
+
+        items_list = json.loads(order.items_json) if order.items_json else []
+        items_html = "".join(
+            f"<li>{item['title']} (x{item['qty']}) - ₹{item['price'] * item['qty']}</li>"
+            for item in items_list
+        )
+
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
+            <h2 style="color: #ff5252;">🍳 MY KITCHEN - Order Delivered!</h2>
+            <p>Hi <strong>{order.customer_name}</strong>,</p>
+            <p>Great news! Your order <strong>#{order.order_number}</strong> has been successfully delivered to:</p>
+            <p style="background: #f9f9f9; padding: 10px; border-radius: 5px;">{order.customer_address}</p>
+            <h4>Order Summary:</h4>
+            <ul>{items_html}</ul>
+            <p><strong>Subtotal:</strong> ₹{order.subtotal:.2f}<br>
+            <strong>GST (5%):</strong> ₹{order.gst_amount:.2f}<br>
+            <strong style="font-size: 1.1em; color: #2e7d32;">Grand Total Paid: ₹{order.total_amount:.2f}</strong></p>
+            <hr style="border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 0.85em; color: #777;">Thank you for ordering from MY KITCHEN. Enjoy your meal!</p>
+        </div>
+        """
+        msg.attach(MIMEText(html_body, 'html'))
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+        print(f"Delivered Email sent to {recipient_email}")
+    except Exception as e:
+        print(f"Delivered Email Error: {e}")
 
 # --- FRONTEND & AUTH ROUTES ---
 @app.route('/')
@@ -178,7 +261,7 @@ def my_orders():
     orders = Order.query.filter_by(user_id=session['user_id']).order_by(Order.id.desc()).all()
     return render_template('orders.html', orders=orders)
 
-# --- ADMIN ROUTES (Direct Access Without URL Key) ---
+# --- ADMIN ROUTES ---
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     error = None
@@ -206,9 +289,87 @@ def admin_panel():
         
     items = MenuItem.query.all()
     orders = Order.query.order_by(Order.id.desc()).all()
+    inquiries = ContactInquiry.query.order_by(ContactInquiry.id.desc()).all()
     total_sales = sum(o.total_amount for o in orders)
     
-    return render_template('admin.html', items=items, orders=orders, total_sales=total_sales, total_orders=len(orders), total_dishes=len(items))
+    return render_template(
+        'admin.html', 
+        items=items, 
+        orders=orders, 
+        inquiries=inquiries,
+        total_sales=total_sales, 
+        total_orders=len(orders), 
+        total_dishes=len(items)
+    )
+
+@app.route('/admin/add', methods=['GET', 'POST'])
+def admin_add_item():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        category = request.form.get('category')
+        description = request.form.get('description')
+        price = int(request.form.get('price', 0))
+        image = request.form.get('image')
+
+        new_dish = MenuItem(title=title, category=category, description=description, price=price, image=image)
+        db.session.add(new_dish)
+        db.session.commit()
+        return redirect(url_for('admin_panel'))
+
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Add Menu Dish - MY KITCHEN</title>
+        <style>
+            body { font-family: sans-serif; background: #fffafa; padding: 2rem; display: flex; justify-content: center; }
+            .form-box { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 450px; }
+            h2 { margin-bottom: 1.5rem; color: #ff5252; }
+            label { display: block; margin-top: 1rem; font-weight: bold; font-size: 0.9rem; }
+            input, select, textarea { width: 100%; padding: 0.6rem; margin-top: 0.3rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+            .btn-submit { background: #ff5252; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 1.2rem; }
+            .cancel-link { margin-left: 1rem; color: #666; text-decoration: none; }
+        </style>
+    </head>
+    <body>
+        <div class="form-box">
+            <h2>Add New Menu Dish</h2>
+            <form method="POST">
+                <label>Dish Name:</label>
+                <input type="text" name="title" placeholder="e.g. Hyderabad Dum Biryani" required>
+                <label>Category:</label>
+                <select name="category" required>
+                    <option value="veg">Pure Veg</option>
+                    <option value="nonveg">Non-Veg</option>
+                </select>
+                <label>Description:</label>
+                <textarea name="description" rows="3" placeholder="Brief description of ingredients..." required></textarea>
+                <label>Price (Rs.):</label>
+                <input type="number" name="price" placeholder="320" required>
+                <label>Image URL:</label>
+                <input type="text" name="image" placeholder="https://images.unsplash.com/..." required>
+                <div>
+                    <button type="submit" class="btn-submit">Add Dish</button>
+                    <a href="/admin" class="cancel-link">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </body>
+    </html>
+    '''
+
+@app.route('/admin/delete/<int:item_id>', methods=['GET', 'POST'])
+def admin_delete_item(item_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    item = MenuItem.query.get_or_404(item_id)
+    db.session.delete(item)
+    db.session.commit()
+    return redirect(url_for('admin_panel'))
 
 @app.route('/admin/order/status/<int:order_id>', methods=['POST'])
 def update_order_status(order_id):
@@ -216,10 +377,17 @@ def update_order_status(order_id):
         return redirect(url_for('admin_login'))
     
     order = Order.query.get_or_404(order_id)
+    previous_status = order.status
     status = request.form.get('status')
+    
     if status:
         order.status = status
         db.session.commit()
+        
+        # Trigger SMS & Email only when status changes to 'Delivered'
+        if status.lower() == 'delivered' and previous_status.lower() != 'delivered':
+            send_delivered_sms(order)
+            send_delivered_email(order)
         
     return redirect(url_for('admin_panel'))
 
@@ -262,12 +430,18 @@ def place_order():
     if not cart or not name or not phone or not address:
         return jsonify({"success": False, "message": "Please fill in all checkout details."}), 400
 
+    # Auto-fill email from logged-in account if checkout form didn't pass one
+    user_id = session.get('user_id')
+    if not email and user_id:
+        user = User.query.get(user_id)
+        if user:
+            email = user.email
+
     subtotal = sum(item['price'] * item['qty'] for item in cart)
     gst_amount = round(subtotal * 0.05, 2)
     grand_total = round(subtotal + gst_amount, 2)
 
     order_num = f"ORD-{random.randint(100000, 999999)}"
-    user_id = session.get('user_id')
 
     new_order = Order(
         order_number=order_num,
@@ -299,5 +473,26 @@ def place_order():
         "customerAddress": address
     })
 
+# --- DYNAMIC CONTACT FORM API ROUTE ---
+@app.route('/api/contact', methods=['POST'])
+def submit_contact_inquiry():
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    phone = data.get('phone', '').strip()
+    message = data.get('message', '').strip()
+
+    if not name or not email or not phone or not message:
+        return jsonify({"success": False, "message": "Please fill out all fields."}), 400
+
+    inquiry = ContactInquiry(name=name, email=email, phone=phone, message=message)
+    db.session.add(inquiry)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"Thank you, {name}! Your message has been saved. We'll be in touch soon."
+    })
+
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, port=5000)
