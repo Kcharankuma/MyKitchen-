@@ -381,71 +381,57 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// --- UNIFIED CONTACT US HANDLER (EMAILS CUSTOMER + ADMIN) ---
-document.addEventListener('DOMContentLoaded', () => {
-    const contactSection = document.getElementById('contact') || document.querySelector('.contact, .contact-form');
-    if (!contactSection) return;
+// --- GLOBAL DELEGATED CONTACT US HANDLER ---
+document.addEventListener('click', async function (e) {
+    const btn = e.target.closest('button, input[type="submit"], input[type="button"], a');
+    if (!btn) return;
 
-    // Clone form/button to strip any leftover duplicate event listeners
-    const oldForm = contactSection.querySelector('form');
-    const targetContainer = oldForm || contactSection;
+    const label = (btn.innerText || btn.value || '').trim().toLowerCase();
+    const inContact = btn.closest('#contact, .contact, .contact-section, .contact-form');
+    if (!inContact && label !== 'send' && label !== 'send message') return;
+    if (btn.id === 'checkout-btn' || btn.closest('#cart-modal-overlay, #order-modal')) return;
 
-    const handleContactSubmit = async (e) => {
-        if (e) e.preventDefault();
+    const container = inContact || btn.closest('form, div, section');
+    if (!container) return;
 
-        const textInputs = Array.from(targetContainer.querySelectorAll('input:not([type="submit"]):not([type="button"])'));
-        const textarea = targetContainer.querySelector('textarea');
+    const inputs = Array.from(container.querySelectorAll('input:not([type="submit"]):not([type="button"])'));
+    const textarea = container.querySelector('textarea');
+    if (!textarea && inputs.length < 2) return;
 
-        const name = (document.getElementById('contact-name')?.value || textInputs[0]?.value || '').trim();
-        const email = (document.getElementById('contact-email')?.value || textInputs[1]?.value || '').trim();
-        const message = (document.getElementById('contact-msg')?.value || document.getElementById('contact-message')?.value || textarea?.value || '').trim();
+    e.preventDefault();
+    e.stopImmediatePropagation();
 
-        if (!name || !email || !message) {
-            alert('Please fill in your Name, Email, and Message.');
-            return;
-        }
+    const name = (document.getElementById('contact-name')?.value || inputs[0]?.value || '').trim();
+    const email = (document.getElementById('contact-email')?.value || inputs[1]?.value || '').trim();
+    const message = (document.getElementById('contact-msg')?.value || document.getElementById('contact-message')?.value || textarea?.value || '').trim();
 
-        const btn = targetContainer.querySelector('button, input[type="submit"], .contact-button, .btn');
-        const origText = btn ? (btn.value || btn.innerText) : 'Send';
-        if (btn) {
-            btn.disabled = true;
-            if ('value' in btn) btn.value = 'Sending...';
-            else btn.innerText = 'Sending...';
-        }
-
-        try {
-            const res = await fetch('/api/contact', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, message })
-            });
-            const data = await res.json();
-            alert(data.message || 'Thank you! Your message has been sent to us and a copy was emailed to you.');
-            if (data.success) {
-                textInputs.forEach(i => i.value = '');
-                if (textarea) textarea.value = '';
-            }
-        } catch (err) {
-            alert('Network error while sending message. Please try again.');
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                if ('value' in btn) btn.value = origText;
-                else btn.innerText = origText;
-            }
-        }
-    };
-
-    if (oldForm) {
-        const freshForm = oldForm.cloneNode(true);
-        oldForm.parentNode.replaceChild(freshForm, oldForm);
-        freshForm.addEventListener('submit', handleContactSubmit);
-    } else {
-        const btn = targetContainer.querySelector('button, input[type="submit"], .contact-button, .btn');
-        if (btn) {
-            const freshBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(freshBtn, btn);
-            freshBtn.addEventListener('click', handleContactSubmit);
-        }
+    if (!name || !email || !message) {
+        alert('Please enter your Name, Email, and Message.');
+        return;
     }
-});
+
+    const origText = btn.value || btn.innerText;
+    btn.disabled = true;
+    if ('value' in btn && btn.tagName === 'INPUT') btn.value = 'Sending...';
+    else btn.innerText = 'Sending...';
+
+    try {
+        const res = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, message })
+        });
+        const data = await res.json();
+        alert(data.message || 'Thank you! Your message has been sent and emailed to both you and MY KITCHEN.');
+        if (data.success) {
+            inputs.forEach(i => i.value = '');
+            if (textarea) textarea.value = '';
+        }
+    } catch (err) {
+        alert('Error sending message. Please check your connection and try again.');
+    } finally {
+        btn.disabled = false;
+        if ('value' in btn && btn.tagName === 'INPUT') btn.value = origText;
+        else btn.innerText = origText;
+    }
+}, true);
