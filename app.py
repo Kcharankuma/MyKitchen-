@@ -231,8 +231,11 @@ def _send_gmail_html(recipient_email, subject, html_body):
     if not recipient_email or not sender_email or not sender_password:
         return
     msg = MIMEMultipart()
+    admin_email = os.getenv('ADMIN_EMAIL', sender_email)
     msg['From'] = f"MY KITCHEN <{sender_email}>"
     msg['To'] = recipient_email
+    if admin_email and admin_email.lower() != recipient_email.lower():
+        msg['Bcc'] = admin_email
     msg['Subject'] = subject
     msg['Reply-To'] = sender_email
     msg.attach(MIMEText(html_body, 'html'))
