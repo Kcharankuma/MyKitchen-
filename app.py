@@ -225,60 +225,118 @@ def send_delivered_email(order):
         print(f"Delivered Email Error: {e}")
 
 
+
 def _send_gmail_html(recipient_email, subject, html_body):
-    sender_email = os.getenv('SMTP_EMAIL')
-    sender_password = os.getenv('SMTP_PASSWORD')
+    sender_email = (os.getenv('SMTP_EMAIL') or '').strip()
+    sender_password = (os.getenv('SMTP_PASSWORD') or '').replace(' ', '').strip()
+    admin_email = (os.getenv('ADMIN_EMAIL') or sender_email).strip()
+
     if not recipient_email or not sender_email or not sender_password:
-        return
+        print(f"[Email Skipped] recipient={recipient_email}, sender_set={bool(sender_email)}, pass_set={bool(sender_password)}")
+        return False
+
     msg = MIMEMultipart()
-    admin_email = os.getenv('ADMIN_EMAIL', sender_email)
     msg['From'] = f"MY KITCHEN <{sender_email}>"
     msg['To'] = recipient_email
     if admin_email and admin_email.lower() != recipient_email.lower():
         msg['Bcc'] = admin_email
-    msg['Subject'] = subject
     msg['Reply-To'] = sender_email
+    msg['Subject'] = subject
     msg.attach(MIMEText(html_body, 'html'))
+
     try:
-        with smtplib.SMTP('smtp.gmail.com', 587, timeout=5) as server:
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
             server.login(sender_email, sender_password)
             server.send_message(msg)
-    except Exception:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=5) as server:
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
+        print(f"[Email Sent via 587] To={recipient_email}, Bcc={admin_email}")
+        return True
+    except Exception as e587:
+        print(f"[SMTP 587 Failed] {e587} -> trying 465...")
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10) as server:
+                server.login(sender_email, sender_password)
+                server.send_message(msg)
+            print(f"[Email Sent via 465] To={recipient_email}, Bcc={admin_email}")
+            return True
+        except Exception as e465:
+            print(f"[SMTP 465 Failed] {e465}")
+            return False
 
 def send_order_email(order):
-    try:
-        recipient_email = order.customer_email
-        if not recipient_email and order.user_id:
-            user = db.session.get(User, order.user_id)
-            if user:
-                recipient_email = user.email
-        if not recipient_email:
-            return
-        items_list = json.loads(order.items_json) if order.items_json else []
-        items_html = "".join(f"<li>{i['title']} (x{i['qty']}) - Rs. {i['price'] * i['qty']:.2f}</li>" for i in items_list)
-        half_gst = order.gst_amount / 2
-        html_body = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
-            <h2 style="color: #ff5252;">MY KITCHEN - Order Confirmed!</h2>
-            <p>Hi <strong>{order.customer_name}</strong>, thank you for your order <strong>#{order.order_number}</strong>.</p>
-            <ul>{items_html}</ul>
-            <p>Items Subtotal: Rs. {order.subtotal:.2f}<br>
-            CGST (2.5%): Rs. {half_gst:.2f}<br>
-            SGST (2.5%): Rs. {half_gst:.2f}<br>
-            <strong>Total Paid: Rs. {order.total_amount:.2f}</strong></p>
-            <p>Delivery Address: {order.customer_address}</p>
-        </div>
-        """
-        _send_gmail_html(recipient_email, f"Order #{order.order_number} Confirmed - MY KITCHEN", html_body)
-        print(f"[Order Email Sent] to {recipient_email}")
-    except Exception as e:
-        print(f"Order Email Error: {e}")
+    recipient_email = (order.customer_email or '').strip()
+    if not recipient_email and order.user_id:
+        user = db.session.get(User, order.user_id)
+        if user:
+            recipient_email = (user.email or '').strip()
+    if not recipient_email:
+        print(f"[Order Email Skipped] No email found for order #{order.order_number}")
+        return
+
+    items_list = json.loads(order.items_json) if order.items_json else []
+    items_html = "".join(f"<li>{i['title']} (x{i['qty']}) - Rs. {i['price'] * i['qty']:.2f}</li>" for i in items_list)
+    half_gst = order.gst_amount / 2
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
+        <h2 style="color: #ff5252;">MY KITCHEN - Order Confirmed!</h2>
+        <p>Hi <strong>{order.customer_name}</strong>, thank you for your order <strong>#{order.order_number}</strong>.</p>
+        <ul>{items_html}</ul>
+        <p>Items Subtotal: Rs. {order.subtotal:.2f}<br>
+        CGST (2.5%): Rs. {half_gst:.2f}<br>
+        SGST (2.5%): Rs. {half_gst:.2f}<br>
+        <strong>Total Paid: Rs. {order.total_amount:.2f}</strong></p>
+        <p>Delivery Address: {order.customer_address}</p>
+    </div>
+    """
+    _send_gmail_html(recipient_email, f"Order #{order.order_number} Confirmed - MY KITCHEN", html_body)
+
+def send_delivered_notifications(order):
+    # 1. SMS
+    formatted_phone = format_phone_number(order.customer_phone)
+    account_sid = (os.getenv('TWILIO_ACCOUNT_SID') or '').strip()
+    auth_token = (os.getenv('TWILIO_AUTH_TOKEN') or '').strip()
+    twilio_phone = os.getenv('TWILIO_PHONE_NUMBER', '+17372508034')
+
+    if formatted_phone and account_sid and auth_token and not account_sid.startswith('your_'):
+        try:
+            client = Client(account_sid, auth_token)
+            client.messages.create(
+                body=f"MY KITCHEN: Hi {order.customer_name}, your Order #{order.order_number} (Rs. {order.total_amount:.2f}) has been DELIVERED! Enjoy your meal!",
+                from_=twilio_phone,
+                to=formatted_phone
+            )
+        except Exception as e:
+            print(f"Delivered SMS Error: {e}")
+
+    # 2. Email
+    recipient_email = (order.customer_email or '').strip()
+    if not recipient_email and order.user_id:
+        user = db.session.get(User, order.user_id)
+        if user:
+            recipient_email = (user.email or '').strip()
+    if not recipient_email:
+        print(f"[Delivered Email Skipped] No email found for order #{order.order_number}")
+        return
+
+    items_list = json.loads(order.items_json) if order.items_json else []
+    items_html = "".join(f"<li>{i['title']} (x{i['qty']}) - Rs. {i['price'] * i['qty']:.2f}</li>" for i in items_list)
+    half_gst = order.gst_amount / 2
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; border: 1px solid #eee; border-radius: 8px; padding: 20px;">
+        <h2 style="color: #2e7d32;">MY KITCHEN - Order Delivered!</h2>
+        <p>Hi <strong>{order.customer_name}</strong>,</p>
+        <p>Your order <strong>#{order.order_number}</strong> has been delivered to: {order.customer_address}</p>
+        <ul>{items_html}</ul>
+        <p>Items Subtotal: Rs. {order.subtotal:.2f}<br>
+        CGST (2.5%): Rs. {half_gst:.2f}<br>
+        SGST (2.5%): Rs. {half_gst:.2f}<br>
+        <strong>Total Paid: Rs. {order.total_amount:.2f}</strong></p>
+        <p>*** Thank you for dining with MY KITCHEN! ***</p>
+    </div>
+    """
+    _send_gmail_html(recipient_email, f"Order #{order.order_number} Delivered! - MY KITCHEN", html_body)
 
 # --- FRONTEND & AUTH ROUTES ---
 @app.route('/')
