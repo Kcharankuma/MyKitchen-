@@ -379,3 +379,51 @@ document.addEventListener('DOMContentLoaded', () => {
         cartIconBtn.addEventListener('click', fillLoggedInCustomerDetails);
     }
 });
+
+
+// --- AUTO-WIRE CONTACT US FORM ---
+document.addEventListener('DOMContentLoaded', () => {
+    const contactForm = document.getElementById('dynamic-contact-form') || document.querySelector('.contact-form form, #contact form');
+    if (contactForm) {
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inputs = contactForm.querySelectorAll('input:not([type="submit"]):not([type="button"]), textarea');
+            const name = (document.getElementById('contact-name')?.value || inputs[0]?.value || '').trim();
+            const email = (document.getElementById('contact-email')?.value || inputs[1]?.value || '').trim();
+            const phone = (document.getElementById('contact-phone')?.value || inputs[2]?.value || '').trim();
+            const message = (document.getElementById('contact-msg')?.value || document.getElementById('contact-message')?.value || contactForm.querySelector('textarea')?.value || '').trim();
+
+            if (!name || !email || !message) {
+                alert('Please fill in all fields before sending.');
+                return;
+            }
+
+            const btn = contactForm.querySelector('button[type="submit"], input[type="submit"], .contact-button');
+            const origText = btn ? (btn.value || btn.innerText) : 'Send';
+            if (btn) {
+                btn.disabled = true;
+                if ('value' in btn) btn.value = 'Sending...';
+                else btn.innerText = 'Sending...';
+            }
+
+            try {
+                const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, phone, message })
+                });
+                const data = await res.json();
+                alert(data.message || 'Thank you! Your message has been sent.');
+                if (data.success) contactForm.reset();
+            } catch (err) {
+                alert('Could not send message right now. Please try again.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    if ('value' in btn) btn.value = origText;
+                    else btn.innerText = origText;
+                }
+            }
+        });
+    }
+});
