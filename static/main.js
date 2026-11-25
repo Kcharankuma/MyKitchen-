@@ -161,7 +161,7 @@ function setupCartEvents() {
                 return;
             }
             if (!name || !phone || !address) {
-                alert('Please fill out all delivery details.');
+                return;
                 return;
             }
 
