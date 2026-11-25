@@ -25,7 +25,29 @@
             .receipt-footer { border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; }
             .print-btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 15px; }
         </style>
-    </head>
+    
+<style>
+    .home-img { position: relative; }
+    .chef-badge-left, .chef-badge-right {
+        position: absolute;
+        background: #fff;
+        padding: 0.65rem 1rem;
+        border-radius: 14px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        z-index: 2;
+        border: 1px solid #ffe4e4;
+    }
+    .chef-badge-left { top: 18%; left: 2%; }
+    .chef-badge-right { bottom: 14%; right: 2%; }
+    @media (max-width: 768px) {
+        .chef-badge-left, .chef-badge-right { padding: 0.45rem 0.7rem; font-size: 0.8rem; }
+    }
+</style>
+
+</head>
     <body>
         <!-- HEADER NAVBAR -->
         <header>
@@ -52,9 +74,43 @@
                 <h3>More than Faster</h3>
                 <h1>Be the fastest <br>In delivery <br>Your <span>Food</span></h1>
                 <p>Select chefs known for their quick service and efficient order processing</p>
-                <a href="#menu" class="btn">Order Now</a>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 0.4rem;">
+                    <a href="#menu" class="btn">Order Now</a>
+                    <a href="#services" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.72rem 1.3rem; border-radius: 0.5rem; border: 1.5px solid #ff5252; color: #ff5252; font-weight: 600; text-decoration: none; background: #fff; transition: 0.2s;">
+                        <i class="bx bx-food-menu"></i> View Menu
+                    </a>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, minmax(95px, 1fr)); gap: 12px; margin-top: 1.8rem; max-width: 440px;">
+                    <div style="background: #fff; padding: 0.75rem 0.6rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); border-left: 3px solid #ff5252; text-align: center;">
+                        <div style="font-weight: 700; font-size: 1.05rem; color: #222;">30 Min</div>
+                        <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">Express Delivery</div>
+                    </div>
+                    <div style="background: #fff; padding: 0.75rem 0.6rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); border-left: 3px solid #2e7d32; text-align: center;">
+                        <div style="font-weight: 700; font-size: 1.05rem; color: #222;">100% Fresh</div>
+                        <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">Hygienic Kitchen</div>
+                    </div>
+                    <div style="background: #fff; padding: 0.75rem 0.6rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); border-left: 3px solid #f59e0b; text-align: center;">
+                        <div style="font-weight: 700; font-size: 1.05rem; color: #222;">4.9 ★</div>
+                        <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">Happy Foodies</div>
+                    </div>
+                </div>
             </div>
             <div class="home-img">
+            <div class="chef-badge-left">
+                <span style="width:36px;height:36px;border-radius:50%;background:#fff0f0;color:#ff5252;display:flex;align-items:center;justify-content:center;font-size:1.2rem;"><i class="bx bxs-flame"></i></span>
+                <div>
+                    <div style="font-weight:700;font-size:0.85rem;color:#222;">Hot & Fresh</div>
+                    <div style="font-size:0.72rem;color:#666;">Cooked on Order</div>
+                </div>
+            </div>
+            <div class="chef-badge-right">
+                <span style="width:36px;height:36px;border-radius:50%;background:#e8f5e9;color:#2e7d32;display:flex;align-items:center;justify-content:center;font-size:1.2rem;"><i class="bx bxs-truck"></i></span>
+                <div>
+                    <div style="font-weight:700;font-size:0.85rem;color:#222;">Free Delivery</div>
+                    <div style="font-size:0.72rem;color:#666;">Hot at Your Door</div>
+                </div>
+            </div>
                 <img src="https://i.pinimg.com/originals/be/a2/96/bea29611267f4387de7b3cee8fbb1d8b.png" alt="chef image">
             </div>
         </section>
@@ -326,7 +382,29 @@
                         .receipt-footer { border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; }
                     </style>
                 `);
-                printWindow.document.write('</head><body>');
+                printWindow.document.write('
+<style>
+    .home-img { position: relative; }
+    .chef-badge-left, .chef-badge-right {
+        position: absolute;
+        background: #fff;
+        padding: 0.65rem 1rem;
+        border-radius: 14px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        z-index: 2;
+        border: 1px solid #ffe4e4;
+    }
+    .chef-badge-left { top: 18%; left: 2%; }
+    .chef-badge-right { bottom: 14%; right: 2%; }
+    @media (max-width: 768px) {
+        .chef-badge-left, .chef-badge-right { padding: 0.45rem 0.7rem; font-size: 0.8rem; }
+    }
+</style>
+
+</head><body>');
                 printWindow.document.write('<div class="receipt-box">' + receiptContent + '</div>');
                 printWindow.document.write('</body></html>');
                 
