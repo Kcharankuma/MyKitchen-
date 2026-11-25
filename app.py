@@ -477,14 +477,17 @@ def update_order_status(order_id):
 @app.route('/api/user-data')
 def get_user_data():
     if session.get('user_id'):
-        user = User.query.get(session['user_id'])
-        return jsonify({
-            "logged_in": True,
-            "name": user.name,
-            "phone": user.phone,
-            "address": user.address,
-            "email": user.email
-        })
+        user = db.session.get(User, session['user_id'])
+        if user:
+            return jsonify({
+                "logged_in": True,
+                "name": user.name,
+                "phone": user.phone,
+                "address": user.address,
+                "email": user.email
+            })
+        session.pop('user_id', None)
+        session.pop('user_name', None)
     return jsonify({"logged_in": False})
 
 @app.route('/api/menu', methods=['GET'])
