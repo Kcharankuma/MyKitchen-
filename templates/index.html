@@ -327,6 +327,92 @@
                         <div class="bill-row total"><span>Grand Total:</span><span id="total-price">₹0.00</span></div>
                     </div>
                     <button class="checkout-btn" id="checkout-btn">Pay & Place Order</button>
+                <button type="button" id="print-current-bill-btn" onclick="printCurrentCartBill()" style="width: 100%; margin-top: 10px; padding: 0.75rem; border-radius: 8px; border: 1.5px solid #ff5252; background: #fff; color: #ff5252; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="bx bx-printer" style="font-size: 1.2rem;"></i> Print Bill
+                </button>
+                <script>
+                    function printCurrentCartBill() {
+                        const name = (document.getElementById('cust-name')?.value || 'Guest').trim();
+                        const phone = (document.getElementById('cust-phone')?.value || 'N/A').trim();
+                        const email = (document.getElementById('cust-email')?.value || '').trim();
+                        const address = (document.getElementById('cust-address')?.value || 'N/A').trim();
+
+                        const cartContainer = document.getElementById('cart-items') || document.querySelector('.cart-content, #cart-list');
+                        const subtotalText = document.getElementById('cart-subtotal')?.innerText || document.getElementById('subtotal-price')?.innerText || '';
+                        const gstText = document.getElementById('cart-gst')?.innerText || document.getElementById('gst-price')?.innerText || '';
+                        const totalText = document.getElementById('cart-total')?.innerText || document.getElementById('total-price')?.innerText || '';
+
+                        let rowsHtml = '';
+                        if (typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0) {
+                            rowsHtml = cart.map(item => `
+                                <tr>
+                                    <td>${item.title}</td>
+                                    <td style="text-align:center;">${item.qty}</td>
+                                    <td style="text-align:right;">Rs. ${(item.price * item.qty).toFixed(2)}</td>
+                                </tr>
+                            `).join('');
+                        } else if (cartContainer) {
+                            rowsHtml = `<tr><td colspan="3">${cartContainer.innerText}</td></tr>`;
+                        }
+
+                        if (!rowsHtml) {
+                            alert('Your cart is empty. Add items first to print the bill.');
+                            return;
+                        }
+
+                        const w = window.open('', '', 'height=650,width=450');
+                        w.document.write(`
+                            <html>
+                            <head>
+                                <title>Bill - MY KITCHEN</title>
+                                <style>
+                                    body { font-family: 'Courier New', monospace; padding: 20px; color: #000; }
+                                    .box { max-width: 380px; margin: auto; }
+                                    .hdr { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                                    .hdr h2 { margin: 0 0 4px; }
+                                    .hdr p { margin: 2px 0; font-size: 0.85rem; }
+                                    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.85rem; }
+                                    th, td { padding: 5px 0; border-bottom: 1px dashed #ccc; text-align: left; }
+                                    .tot { border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; font-size: 0.9rem; }
+                                    .tot div { display: flex; justify-content: space-between; margin-bottom: 4px; }
+                                    .grand { font-weight: bold; font-size: 1.05rem; border-top: 1px dashed #000; padding-top: 6px; }
+                                    .ftr { text-align: center; border-top: 2px dashed #000; margin-top: 14px; padding-top: 10px; font-size: 0.8rem; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="box">
+                                    <div class="hdr">
+                                        <h2>MY KITCHEN</h2>
+                                        <p>Manager: Kammari Charan Kumar</p>
+                                        <p>Ph: +91 7075575715</p>
+                                        <p>Date: ${new Date().toLocaleString()}</p>
+                                    </div>
+                                    <p style="font-size:0.85rem;margin:4px 0;"><strong>Customer:</strong> ${name}</p>
+                                    <p style="font-size:0.85rem;margin:4px 0;"><strong>Phone:</strong> ${phone}</p>
+                                    ${email ? `<p style="font-size:0.85rem;margin:4px 0;"><strong>Email:</strong> ${email}</p>` : ''}
+                                    <p style="font-size:0.85rem;margin:4px 0;"><strong>Address:</strong> ${address}</p>
+                                    <table>
+                                        <thead>
+                                            <tr><th>Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Amount</th></tr>
+                                        </thead>
+                                        <tbody>${rowsHtml}</tbody>
+                                    </table>
+                                    <div class="tot">
+                                        ${subtotalText ? `<div><span>Subtotal:</span><span>${subtotalText}</span></div>` : ''}
+                                        ${gstText ? `<div><span>GST (5%):</span><span>${gstText}</span></div>` : ''}
+                                        ${totalText ? `<div class="grand"><span>Grand Total:</span><span>${totalText}</span></div>` : ''}
+                                    </div>
+                                    <div class="ftr">*** Thank you for ordering from MY KITCHEN! ***</div>
+                                </div>
+                            </body>
+                            </html>
+                        `);
+                        w.document.close();
+                        w.focus();
+                        setTimeout(() => { w.print(); w.close(); }, 250);
+                    }
+                </script>
+
                 </div>
             </div>
         </div>
