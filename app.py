@@ -583,7 +583,7 @@ def admin_delete_item(item_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    item = MenuItem.query.get_or_404(item_id)
+    item = MenuItem.query.get(item_id)
     db.session.delete(item)
     db.session.commit()
     return redirect(url_for('admin_panel'))
