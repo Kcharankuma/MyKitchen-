@@ -339,6 +339,20 @@ def send_delivered_notifications(order):
     _send_gmail_html(recipient_email, f"Order #{order.order_number} Delivered! - MY KITCHEN", html_body)
 
 # --- FRONTEND & AUTH ROUTES ---
+def clean_image_url(raw_url):
+    from urllib.parse import urlparse, parse_qs, unquote
+    default_img = "https://images.unsplash.com/photo-1630383249896-424e482df921?auto=format&fit=crop&w=600&q=80"
+    if not raw_url or not str(raw_url).strip():
+        return default_img
+    raw_url = str(raw_url).strip()
+    if "imgurl=" in raw_url:
+        parsed = parse_qs(urlparse(raw_url).query)
+        if "imgurl" in parsed and parsed["imgurl"]:
+            return unquote(parsed["imgurl"][0])
+    if raw_url.startswith(("http://", "https://", "/static/")):
+        return raw_url
+    return default_img
+
 @app.route('/')
 def home():
     if not session.get('user_id'):
