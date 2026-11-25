@@ -123,7 +123,7 @@ def send_welcome_sms(name, phone_number):
     auth_token = os.getenv('TWILIO_AUTH_TOKEN')
     twilio_phone = os.getenv('TWILIO_PHONE_NUMBER', '+17372508034')
 
-    if not formatted_phone or not account_sid or not auth_token:
+    if not formatted_phone or not account_sid or not auth_token or account_sid.startswith('your_'):
         return
     try:
         client = Client(account_sid, auth_token)
@@ -141,7 +141,7 @@ def send_order_sms(order_number, total, phone_number):
     auth_token = os.getenv('TWILIO_AUTH_TOKEN')
     twilio_phone = os.getenv('TWILIO_PHONE_NUMBER', '+17372508034')
 
-    if not formatted_phone or not account_sid or not auth_token:
+    if not formatted_phone or not account_sid or not auth_token or account_sid.startswith('your_'):
         return
     try:
         client = Client(account_sid, auth_token)
@@ -159,7 +159,7 @@ def send_delivered_sms(order):
     auth_token = os.getenv('TWILIO_AUTH_TOKEN')
     twilio_phone = os.getenv('TWILIO_PHONE_NUMBER', '+17372508034')
 
-    if not formatted_phone or not account_sid or not auth_token:
+    if not formatted_phone or not account_sid or not auth_token or account_sid.startswith('your_'):
         print(f"[SMS Mock] Delivered SMS skipped (Twilio keys missing) for {order.order_number}")
         return
     try:
@@ -482,6 +482,7 @@ def place_order():
     db.session.commit()
 
     send_order_sms(order_num, grand_total, phone)
+    send_order_email(new_order)
 
     return jsonify({
         "success": True,
