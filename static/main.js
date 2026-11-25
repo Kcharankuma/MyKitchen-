@@ -21,7 +21,7 @@ function fetchUserData() {
 }
 
 function fetchMenuItems() {
-    fetch('/api/menu')
+    fetch('/api/menu?t=' + Date.now(), { cache: 'no-store' })
         .then(res => res.json())
         .then(data => {
             if (data.success) {

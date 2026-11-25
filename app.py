@@ -556,7 +556,7 @@ def admin_add_item():
 
     if request.method == 'POST':
         title = request.form.get('title')
-        category = request.form.get('category')
+        category = (request.form.get('category') or 'Non-Veg').strip() or 'Non-Veg'
         description = request.form.get('description')
         price = int(request.form.get('price', 0))
         image = clean_image_url(request.form.get('image'))
