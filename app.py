@@ -234,6 +234,7 @@ def _send_gmail_html(recipient_email, subject, html_body):
     msg['From'] = f"MY KITCHEN <{sender_email}>"
     msg['To'] = recipient_email
     msg['Subject'] = subject
+    msg['Reply-To'] = sender_email
     msg.attach(MIMEText(html_body, 'html'))
     try:
         with smtplib.SMTP('smtp.gmail.com', 587, timeout=5) as server:
@@ -510,7 +511,7 @@ def place_order():
     name = data.get('name')
     phone = data.get('phone')
     address = data.get('address')
-    email = data.get('email', '')
+    email = (data.get('email') or '').strip()
 
     if not cart or not name or not phone or not address:
         return jsonify({"success": False, "message": "Please fill in all checkout details."}), 400
@@ -567,7 +568,7 @@ def place_order():
 def submit_contact_inquiry():
     data = request.get_json() or {}
     name = data.get('name', '').strip()
-    email = data.get('email', '').strip()
+    email = (data.get('email') or '').strip().strip()
     phone = data.get('phone', '').strip()
     message = data.get('message', '').strip()
 
