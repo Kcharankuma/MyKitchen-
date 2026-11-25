@@ -398,6 +398,73 @@ def logout():
     session.pop('admin_logged_in', None)
     return redirect(url_for('customer_login'))
 
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    error = None
+    success = None
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip()
+        phone = (request.form.get('phone') or '').strip()
+        new_password = (request.form.get('new_password') or '').strip()
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            error = "No account found with that email address."
+        elif phone not in (user.phone or '') and (user.phone or '') not in phone:
+            error = "Registered phone number does not match this account."
+        elif len(new_password) < 4:
+            error = "Please enter a new password (at least 4 characters)."
+        else:
+            user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            success = "Password updated successfully! You can now log in."
+
+    msg_html = ""
+    if error:
+        msg_html = f'<div style="background:#ffebee;color:#c62828;padding:10px;border-radius:6px;margin-bottom:12px;font-size:0.9rem;">{error}</div>'
+    elif success:
+        msg_html = f'<div style="background:#e8f5e9;color:#2e7d32;padding:10px;border-radius:6px;margin-bottom:12px;font-size:0.9rem;">{success}</div>'
+
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Reset Password - MY KITCHEN</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{ font-family: 'Poppins', sans-serif; background: #fffafa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 1rem; }}
+            .box {{ background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); width: 100%; max-width: 400px; }}
+            h2 {{ color: #ff5252; margin-top: 0; text-align: center; }}
+            p.sub {{ color: #666; font-size: 0.88rem; text-align: center; margin-bottom: 1.2rem; }}
+            label {{ display: block; font-size: 0.85rem; font-weight: 600; margin-top: 0.8rem; color: #333; }}
+            input {{ width: 100%; padding: 0.7rem; margin-top: 0.3rem; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 0.95rem; }}
+            button {{ width: 100%; background: #ff5252; color: #fff; border: none; padding: 0.85rem; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; margin-top: 1.3rem; }}
+            button:hover {{ background: #e04343; }}
+            .back {{ display: block; text-align: center; margin-top: 1rem; color: #555; text-decoration: none; font-size: 0.9rem; }}
+            .back:hover {{ color: #ff5252; }}
+        </style>
+    </head>
+    <body>
+        <div class="box">
+            <h2>Reset Password</h2>
+            <p class="sub">Verify your registered email and phone number to set a new password.</p>
+            {msg_html}
+            <form method="POST">
+                <label>Registered Email</label>
+                <input type="email" name="email" placeholder="you@example.com" required>
+                <label>Registered Phone Number</label>
+                <input type="tel" name="phone" placeholder="e.g. 7075575715" required>
+                <label>New Password</label>
+                <input type="password" name="new_password" placeholder="Enter new password" required>
+                <button type="submit">Update Password</button>
+            </form>
+            <a href="/customer/login" class="back">← Back to Customer Login</a>
+        </div>
+    </body>
+    </html>
+    '''
+
 @app.route('/customer/logout')
 def customer_logout():
     session.pop('user_id', None)
