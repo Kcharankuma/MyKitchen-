@@ -258,3 +258,96 @@ function applyFilters() {
 
     renderMenuItems(filtered);
 }
+
+// --- AUTO-WIRE CART & CHECKOUT MODAL HANDLERS ---
+document.addEventListener('DOMContentLoaded', () => {
+    const cartIcon = document.getElementById('cart-icon');
+    const closeCart = document.getElementById('close-cart');
+    const cartOverlay = document.getElementById('cart-modal-overlay');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+
+    if (cartIcon && cartOverlay) {
+        cartIcon.onclick = () => {
+            cartOverlay.classList.add('active', 'open');
+            cartOverlay.style.display = 'flex';
+        };
+    }
+    if (closeCart && cartOverlay) {
+        closeCart.onclick = () => {
+            cartOverlay.classList.remove('active', 'open');
+            cartOverlay.style.display = 'none';
+        };
+    }
+    if (closeModalBtn) {
+        closeModalBtn.onclick = () => {
+            const orderModal = document.getElementById('order-modal');
+            if (orderModal) {
+                orderModal.classList.remove('active');
+                orderModal.style.display = 'none';
+            }
+        };
+    }
+    if (checkoutBtn) {
+        checkoutBtn.onclick = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('cust-name')?.value.trim();
+            const phone = document.getElementById('cust-phone')?.value.trim();
+            const email = document.getElementById('cust-email')?.value.trim() || '';
+            const address = document.getElementById('cust-address')?.value.trim();
+
+            if (!name || !phone || !address) {
+                alert('Please provide your full delivery details (Name, Phone, and Address).');
+                return;
+            }
+            if (typeof cart === 'undefined' || !cart.length) {
+                alert('Your cart is empty!');
+                return;
+            }
+
+            checkoutBtn.disabled = true;
+            checkoutBtn.innerText = 'Processing...';
+            try {
+                const res = await fetch('/api/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone, email, address, cart })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (cartOverlay) {
+                        cartOverlay.classList.remove('active', 'open');
+                        cartOverlay.style.display = 'none';
+                    }
+                    cart = [];
+                    if (typeof updateCartUI === 'function') updateCartUI();
+
+                    const orderModal = document.getElementById('order-modal');
+                    if (document.getElementById('receipt-id')) document.getElementById('receipt-id').innerText = '#' + data.orderId;
+                    if (document.getElementById('receipt-name')) document.getElementById('receipt-name').innerText = data.customerName;
+                    if (document.getElementById('receipt-phone')) document.getElementById('receipt-phone').innerText = data.customerPhone;
+                    if (document.getElementById('receipt-subtotal')) document.getElementById('receipt-subtotal').innerText = '₹' + data.subtotal.toFixed(2);
+                    if (document.getElementById('receipt-cgst')) document.getElementById('receipt-cgst').innerText = '₹' + (data.gst / 2).toFixed(2);
+                    if (document.getElementById('receipt-sgst')) document.getElementById('receipt-sgst').innerText = '₹' + (data.gst / 2).toFixed(2);
+                    if (document.getElementById('receipt-grandtotal')) document.getElementById('receipt-grandtotal').innerText = '₹' + data.grandTotal.toFixed(2);
+                    if (document.getElementById('receipt-items-body') && Array.isArray(data.items)) {
+                        document.getElementById('receipt-items-body').innerHTML = data.items.map(i =>
+                            `<tr><td>${i.title}</td><td>${i.qty}</td><td>₹${i.price.toFixed(2)}</td><td>₹${(i.price * i.qty).toFixed(2)}</td></tr>`
+                        ).join('');
+                    }
+                    if (orderModal) {
+                        orderModal.classList.add('active');
+                        orderModal.style.display = 'flex';
+                    }
+                } else {
+                    alert(data.message || 'Order placement failed.');
+                }
+            } catch (err) {
+                alert('Error placing order. Please try again.');
+            } finally {
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerText = 'Pay & Place Order';
+            }
+        };
+    }
+});
