@@ -11,7 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from twilio.rest import Client
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'super_secret_kitchen_key_123')
+app.secret_key = os.environ.get('SECRET_KEY', 'my-kitchen-stable-session-key-2026')
 
 # --- DATABASE CONFIGURATION (Vercel Read-Only Fix) ---
 if os.getenv('VERCEL'):
@@ -420,8 +420,9 @@ def customer_login():
 
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
+            session.permanent = True
             session['user_name'] = user.name
-            return redirect(url_for('home'))
+            return redirect('/?logged_out=1')
         else:
             error = "Invalid Email or Password!"
     return render_template('auth.html', error=error, mode='login', is_admin=False)
@@ -445,9 +446,10 @@ def register():
             db.session.commit()
 
             session['user_id'] = new_user.id
+            session.permanent = True
             session['user_name'] = new_user.name
             send_welcome_sms(name, phone)
-            return redirect(url_for('home'))
+            return redirect('/?logged_out=1')
     return render_template('auth.html', error=error, mode='register', is_admin=False)
 
 
@@ -529,7 +531,7 @@ def forgot_password():
 def customer_logout():
     session.pop('user_id', None)
     session.pop('user_name', None)
-    return redirect(url_for('home'))
+    return redirect('/?logged_out=1')
 
 @app.route('/my-orders')
 def my_orders():
@@ -557,7 +559,7 @@ def admin_login():
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_logged_in', None)
-    return redirect(url_for('home'))
+    return redirect('/?logged_out=1')
 
 @app.route('/admin/export-orders')
 def export_orders_excel():

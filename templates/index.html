@@ -539,6 +539,47 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+
+<script>
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('logged_out') === '1') {
+        localStorage.removeItem('mykitchen_user');
+        window.history.replaceState({}, document.title, '/');
+        return;
+    }
+
+    const serverUser = "{{ session.get('user_name', '') }}".trim();
+    const serverEmail = "{{ session.get('user_email', '') }}".trim();
+
+    if (serverUser) {
+        localStorage.setItem('mykitchen_user', JSON.stringify({ name: serverUser, email: serverEmail }));
+    } else {
+        const savedRaw = localStorage.getItem('mykitchen_user');
+        if (savedRaw) {
+            try {
+                const saved = JSON.parse(savedRaw);
+                if (saved && saved.name) {
+                    const loginLink = document.querySelector('a[href*="/customer/login"]');
+                    if (loginLink) {
+                        const navList = loginLink.parentElement;
+                        if (navList && !document.querySelector('a[href*="/my-orders"]')) {
+                            const ordersLink = document.createElement('a');
+                            ordersLink.href = '/my-orders';
+                            ordersLink.textContent = 'My Orders';
+                            ordersLink.style.marginRight = '18px';
+                            navList.insertBefore(ordersLink, loginLink);
+                        }
+                        loginLink.href = '/logout';
+                        loginLink.textContent = 'Logout (' + saved.name + ')';
+                    }
+                }
+            } catch (e) {}
+        }
+    }
+})();
+</script>
+
 </body></html>');
                 
 
@@ -654,6 +695,47 @@ document.addEventListener('DOMContentLoaded', function() {
         addrIn.setAttribute('minlength', '10');
     }
 });
+</script>
+
+
+<script>
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('logged_out') === '1') {
+        localStorage.removeItem('mykitchen_user');
+        window.history.replaceState({}, document.title, '/');
+        return;
+    }
+
+    const serverUser = "{{ session.get('user_name', '') }}".trim();
+    const serverEmail = "{{ session.get('user_email', '') }}".trim();
+
+    if (serverUser) {
+        localStorage.setItem('mykitchen_user', JSON.stringify({ name: serverUser, email: serverEmail }));
+    } else {
+        const savedRaw = localStorage.getItem('mykitchen_user');
+        if (savedRaw) {
+            try {
+                const saved = JSON.parse(savedRaw);
+                if (saved && saved.name) {
+                    const loginLink = document.querySelector('a[href*="/customer/login"]');
+                    if (loginLink) {
+                        const navList = loginLink.parentElement;
+                        if (navList && !document.querySelector('a[href*="/my-orders"]')) {
+                            const ordersLink = document.createElement('a');
+                            ordersLink.href = '/my-orders';
+                            ordersLink.textContent = 'My Orders';
+                            ordersLink.style.marginRight = '18px';
+                            navList.insertBefore(ordersLink, loginLink);
+                        }
+                        loginLink.href = '/logout';
+                        loginLink.textContent = 'Logout (' + saved.name + ')';
+                    }
+                }
+            } catch (e) {}
+        }
+    }
+})();
 </script>
 
 </body>
