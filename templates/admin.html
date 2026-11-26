@@ -172,5 +172,57 @@
                 </table>
             </div>
         </div>
-    </body>
+    
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action*="add"]') || document.querySelector('form');
+    if (!form) return;
+
+    const titleIn = form.querySelector('input[name="title"]');
+    const priceIn = form.querySelector('input[name="price"]');
+    const imageIn = form.querySelector('input[name="image"]');
+    const descIn  = form.querySelector('textarea[name="description"]');
+
+    if (titleIn) {
+        titleIn.setAttribute('pattern', '^[A-Za-z][A-Za-z\s&()-]{2,59}$');
+        titleIn.setAttribute('title', 'Dish Name must contain only letters and spaces (minimum 3 characters, no numbers)');
+        titleIn.addEventListener('input', function() {
+            this.value = this.value.replace(/[^A-Za-z\s&()-]/g, '');
+        });
+    }
+
+    if (priceIn) {
+        priceIn.setAttribute('type', 'number');
+        priceIn.setAttribute('min', '10');
+        priceIn.setAttribute('max', '10000');
+        priceIn.setAttribute('step', '1');
+        priceIn.setAttribute('title', 'Price must be a valid amount between ₹10 and ₹10,000');
+        priceIn.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    }
+
+    if (imageIn) {
+        imageIn.setAttribute('type', 'url');
+        imageIn.setAttribute('pattern', '^https?://.+');
+        imageIn.setAttribute('title', 'Enter a valid Image URL starting with http:// or https://');
+    }
+
+    if (descIn) {
+        descIn.setAttribute('minlength', '10');
+        descIn.addEventListener('input', function() {
+            const val = this.value.trim();
+            const hasWords = /[A-Za-z]{3,}/.test(val);
+            const hasSpace = /\s/.test(val);
+            if (val.length < 10 || !hasWords || !hasSpace) {
+                this.setCustomValidity('Enter a proper dish description with real words (minimum 10 characters, e.g., "Crispy masala dosa served with sambar")');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+});
+</script>
+
+</body>
 </html>
