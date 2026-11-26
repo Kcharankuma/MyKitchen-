@@ -224,5 +224,23 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+
+<script>
+(function() {
+    function notifyMenuChanged() {
+        try {
+            localStorage.setItem('mykitchen_menu_updated', Date.now().toString());
+            if ('BroadcastChannel' in window) {
+                const ch = new BroadcastChannel('mykitchen_menu_sync');
+                ch.postMessage({ updated: true, ts: Date.now() });
+            }
+        } catch (e) {}
+    }
+    notifyMenuChanged();
+    document.querySelectorAll('form').forEach(f => f.addEventListener('submit', notifyMenuChanged));
+    document.querySelectorAll('a[href*="delete"]').forEach(a => a.addEventListener('click', notifyMenuChanged));
+})();
+</script>
+
 </body>
 </html>

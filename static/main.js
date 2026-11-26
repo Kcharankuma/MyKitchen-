@@ -379,3 +379,49 @@ document.addEventListener('DOMContentLoaded', () => {
         cartIconBtn.addEventListener('click', fillLoggedInCustomerDetails);
     }
 });
+
+
+// --- Real-Time Live Menu Sync (Zero Page Refresh Needed) ---
+(function() {
+    let lastMenuSignature = "";
+
+    async function checkMenuUpdates() {
+        try {
+            const res = await fetch('/api/menu?t=' + Date.now(), { cache: 'no-store' });
+            const json = await res.json();
+            if (!json || !json.success || !Array.isArray(json.data)) return;
+
+            const signature = JSON.stringify(json.data.map(i => [i.id, i.title, i.price, i.image, i.category]));
+            if (!lastMenuSignature) {
+                lastMenuSignature = signature;
+                return;
+            }
+            if (signature !== lastMenuSignature) {
+                lastMenuSignature = signature;
+                if (typeof loadMenu === 'function') {
+                    loadMenu();
+                } else if (typeof fetchMenu === 'function') {
+                    fetchMenu();
+                } else if (typeof renderMenu === 'function') {
+                    renderMenu(json.data);
+                } else if (typeof displayMenu === 'function') {
+                    displayMenu(json.data);
+                }
+            }
+        } catch (err) {
+            // Silently ignore transient network hiccups
+        }
+    }
+
+    // Listen for instant cross-tab broadcast when Admin adds/deletes an item
+    if ('BroadcastChannel' in window) {
+        const menuChannel = new BroadcastChannel('mykitchen_menu_sync');
+        menuChannel.onmessage = () => checkMenuUpdates();
+    }
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'mykitchen_menu_updated') checkMenuUpdates();
+    });
+
+    // Silently check for new admin menu updates every 5 seconds in the background
+    setInterval(checkMenuUpdates, 5000);
+})();
