@@ -401,8 +401,7 @@ def validate_registration_fields(name, email, phone, address, password):
 
 @app.route('/')
 def home():
-    if not session.get('user_id'):
-        return redirect(url_for('customer_login'))
+    
     user = db.session.get(User, session.get('user_id'))
     if not user:
         session.pop('user_id', None)
