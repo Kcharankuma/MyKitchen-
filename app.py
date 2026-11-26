@@ -106,6 +106,21 @@ def seed_database():
 @app.before_request
 def initialize_database():
     db.create_all()
+    if Order.query.count() == 0:
+        import json
+        from datetime import datetime, timedelta
+        raw_samples = [
+            {'order_number': 'ORD-1001', 'items_json': json.dumps([{'title': 'Chicken Dum Biryani', 'price': 340, 'qty': 2}, {'title': 'Butter Chicken', 'price': 360, 'qty': 1}]), 'subtotal': 1040.0, 'gst_amount': 52.0, 'total': 1092.0, 'grand_total': 1092.0, 'customer_name': 'Rahul Sharma', 'phone': '9876543210', 'address': '14-2, MG Road, Madanapalle', 'status': 'Delivered', 'created_at': (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d %H:%M')},
+            {'order_number': 'ORD-1002', 'items_json': json.dumps([{'title': 'Paneer Butter Masala', 'price': 280, 'qty': 1}, {'title': 'Dal Makhani', 'price': 220, 'qty': 1}]), 'subtotal': 500.0, 'gst_amount': 25.0, 'total': 525.0, 'grand_total': 525.0, 'customer_name': 'Priya Reddy', 'phone': '9123456789', 'address': 'Plot 8, Angallu, Madanapalle', 'status': 'Delivered', 'created_at': (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M')}
+        ]
+        valid_cols = ['order_number', 'customer_address', 'customer_email', 'customer_name', 'user_id', 'status', 'payment_status', 'items_json', 'customer_phone', 'id', 'total_amount', 'gst_amount', 'subtotal']
+        for s in raw_samples:
+            filtered = {k: v for k, v in s.items() if k in valid_cols}
+            try:
+                db.session.add(Order(**filtered))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
     seed_database()
 
 # --- TWILIO SMS & EMAIL HELPER FUNCTIONS ---
