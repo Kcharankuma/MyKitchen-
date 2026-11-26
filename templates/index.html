@@ -540,42 +540,51 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
+
 <script>
 (function() {
+    // 1. Preserve scroll position across page refreshes so it doesn't jump back to the top words
+    const savedScroll = sessionStorage.getItem('mykitchen_scroll_y');
+    if (savedScroll !== null) {
+        window.addEventListener('load', () => {
+            setTimeout(() => window.scrollTo(0, parseInt(savedScroll, 10) || 0), 50);
+        });
+    }
+    window.addEventListener('beforeunload', () => {
+        sessionStorage.setItem('mykitchen_scroll_y', window.scrollY.toString());
+    });
+
+    // 2. Persist customer login state in navbar across refreshes
     const params = new URLSearchParams(window.location.search);
     if (params.get('logged_out') === '1') {
         localStorage.removeItem('mykitchen_user');
+        sessionStorage.removeItem('mykitchen_scroll_y');
         window.history.replaceState({}, document.title, '/');
         return;
     }
 
-    const serverUser = "{{ session.get('user_name', '') }}".trim();
-    const serverEmail = "{{ session.get('user_email', '') }}".trim();
-
+    const serverUser = "{{ session.get('user_name') or session.get('customer_name') or session.get('user') or '' }}".trim();
     if (serverUser) {
-        localStorage.setItem('mykitchen_user', JSON.stringify({ name: serverUser, email: serverEmail }));
+        localStorage.setItem('mykitchen_user', JSON.stringify({ name: serverUser }));
     } else {
-        const savedRaw = localStorage.getItem('mykitchen_user');
-        if (savedRaw) {
-            try {
-                const saved = JSON.parse(savedRaw);
-                if (saved && saved.name) {
-                    const loginLink = document.querySelector('a[href*="/customer/login"]');
-                    if (loginLink) {
-                        const navList = loginLink.parentElement;
-                        if (navList && !document.querySelector('a[href*="/my-orders"]')) {
-                            const ordersLink = document.createElement('a');
-                            ordersLink.href = '/my-orders';
-                            ordersLink.textContent = 'My Orders';
-                            ordersLink.style.marginRight = '18px';
-                            navList.insertBefore(ordersLink, loginLink);
-                        }
-                        loginLink.href = '/logout';
-                        loginLink.textContent = 'Logout (' + saved.name + ')';
+        try {
+            const saved = JSON.parse(localStorage.getItem('mykitchen_user') || 'null');
+            if (saved && saved.name) {
+                const loginLink = document.querySelector('a[href*="login"]');
+                if (loginLink && !loginLink.href.includes('admin')) {
+                    const navList = loginLink.parentElement;
+                    if (navList && !document.querySelector('a[href*="my-orders"]')) {
+                        const ordersLink = document.createElement('a');
+                        ordersLink.href = '/my-orders';
+                        ordersLink.textContent = 'My Orders';
+                        ordersLink.style.marginRight = '18px';
+                        navList.insertBefore(ordersLink, loginLink);
                     }
+                    loginLink.href = '/logout';
+                    loginLink.textContent = 'Logout (' + saved.name + ')';
                 }
-            } catch (e) {}
-        }
+            }
+        } catch (e) {}
     }
 })();
 </script>
@@ -698,42 +707,51 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
+
 <script>
 (function() {
+    // 1. Preserve scroll position across page refreshes so it doesn't jump back to the top words
+    const savedScroll = sessionStorage.getItem('mykitchen_scroll_y');
+    if (savedScroll !== null) {
+        window.addEventListener('load', () => {
+            setTimeout(() => window.scrollTo(0, parseInt(savedScroll, 10) || 0), 50);
+        });
+    }
+    window.addEventListener('beforeunload', () => {
+        sessionStorage.setItem('mykitchen_scroll_y', window.scrollY.toString());
+    });
+
+    // 2. Persist customer login state in navbar across refreshes
     const params = new URLSearchParams(window.location.search);
     if (params.get('logged_out') === '1') {
         localStorage.removeItem('mykitchen_user');
+        sessionStorage.removeItem('mykitchen_scroll_y');
         window.history.replaceState({}, document.title, '/');
         return;
     }
 
-    const serverUser = "{{ session.get('user_name', '') }}".trim();
-    const serverEmail = "{{ session.get('user_email', '') }}".trim();
-
+    const serverUser = "{{ session.get('user_name') or session.get('customer_name') or session.get('user') or '' }}".trim();
     if (serverUser) {
-        localStorage.setItem('mykitchen_user', JSON.stringify({ name: serverUser, email: serverEmail }));
+        localStorage.setItem('mykitchen_user', JSON.stringify({ name: serverUser }));
     } else {
-        const savedRaw = localStorage.getItem('mykitchen_user');
-        if (savedRaw) {
-            try {
-                const saved = JSON.parse(savedRaw);
-                if (saved && saved.name) {
-                    const loginLink = document.querySelector('a[href*="/customer/login"]');
-                    if (loginLink) {
-                        const navList = loginLink.parentElement;
-                        if (navList && !document.querySelector('a[href*="/my-orders"]')) {
-                            const ordersLink = document.createElement('a');
-                            ordersLink.href = '/my-orders';
-                            ordersLink.textContent = 'My Orders';
-                            ordersLink.style.marginRight = '18px';
-                            navList.insertBefore(ordersLink, loginLink);
-                        }
-                        loginLink.href = '/logout';
-                        loginLink.textContent = 'Logout (' + saved.name + ')';
+        try {
+            const saved = JSON.parse(localStorage.getItem('mykitchen_user') || 'null');
+            if (saved && saved.name) {
+                const loginLink = document.querySelector('a[href*="login"]');
+                if (loginLink && !loginLink.href.includes('admin')) {
+                    const navList = loginLink.parentElement;
+                    if (navList && !document.querySelector('a[href*="my-orders"]')) {
+                        const ordersLink = document.createElement('a');
+                        ordersLink.href = '/my-orders';
+                        ordersLink.textContent = 'My Orders';
+                        ordersLink.style.marginRight = '18px';
+                        navList.insertBefore(ordersLink, loginLink);
                     }
+                    loginLink.href = '/logout';
+                    loginLink.textContent = 'Logout (' + saved.name + ')';
                 }
-            } catch (e) {}
-        }
+            }
+        } catch (e) {}
     }
 })();
 </script>

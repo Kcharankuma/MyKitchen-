@@ -419,7 +419,9 @@ def customer_login():
         user = User.query.filter_by(email=email).first()
 
         if user and check_password_hash(user.password_hash, password):
+            session.permanent = True
             session['user_id'] = user.id
+            session.permanent = True
             session.permanent = True
             session['user_name'] = user.name
             return redirect('/?logged_out=1')
@@ -445,7 +447,9 @@ def register():
             db.session.add(new_user)
             db.session.commit()
 
+            session.permanent = True
             session['user_id'] = new_user.id
+            session.permanent = True
             session.permanent = True
             session['user_name'] = new_user.name
             send_welcome_sms(name, phone)
