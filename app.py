@@ -544,6 +544,36 @@ def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect(url_for('home'))
 
+@app.route('/admin/export-orders')
+def export_orders_excel():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    import csv, io, json
+    from flask import Response
+    orders = Order.query.order_by(Order.id.desc()).all()
+    output = io.StringIO()
+    output.write('\ufeff')
+    writer = csv.writer(output)
+    writer.writerow(['Order ID', 'Order Number', 'Customer Name', 'Phone', 'Address', 'Items Ordered', 'Subtotal (INR)', 'GST 5% (INR)', 'Grand Total (INR)', 'Status', 'Order Date'])
+    for o in orders:
+        try:
+            parsed_items = json.loads(o.items_json or '[]')
+            items_summary = '; '.join([f"{i.get('title', i.get('name', 'Item'))} x{i.get('qty', i.get('quantity', 1))}" for i in parsed_items])
+        except Exception:
+            items_summary = str(o.items_json or '')
+        cust_name = getattr(o, 'customer_name', '') or (o.user.name if getattr(o, 'user', None) else 'Guest')
+        cust_phone = getattr(o, 'phone', '') or (getattr(o, 'user', None).phone if getattr(o, 'user', None) else '')
+        cust_addr = getattr(o, 'address', '') or (getattr(o, 'user', None).address if getattr(o, 'user', None) else '')
+        grand_total = getattr(o, 'total', None) or getattr(o, 'grand_total', None) or round(float(o.subtotal or 0) + float(o.gst_amount or 0), 2)
+        status = getattr(o, 'status', 'Confirmed')
+        created = str(getattr(o, 'created_at', '') or getattr(o, 'order_date', ''))
+        writer.writerow([o.id, o.order_number, cust_name, cust_phone, cust_addr, items_summary, o.subtotal, o.gst_amount, grand_total, status, created])
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment; filename=MyKitchen_Customer_Orders_Report.csv'}
+    )
+
 @app.route('/admin')
 def admin_panel():
     if not session.get('admin_logged_in'):
