@@ -242,5 +242,71 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 
+
+<script>
+(function() {
+    const STORAGE_KEY = 'mykitchen_persisted_items';
+    const DELETED_KEY = 'mykitchen_deleted_ids';
+
+    function getSaved() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (e) { return []; }
+    }
+    function saveItems(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+
+    // Capture newly added item on form submit so it persists even if Vercel /tmp restarts
+    const addForm = document.querySelector('form[action*="add"]') || document.querySelector('form');
+    if (addForm) {
+        addForm.addEventListener('submit', function() {
+            const title = (addForm.querySelector('input[name="title"]')?.value || '').trim();
+            const category = (addForm.querySelector('select[name="category"], input[name="category"]')?.value || 'Non-Veg').trim();
+            const price = parseInt(addForm.querySelector('input[name="price"]')?.value || '0', 10);
+            const image = (addForm.querySelector('input[name="image"]')?.value || '').trim();
+            const description = (addForm.querySelector('textarea[name="description"]')?.value || '').trim();
+            if (title && price > 0 && image) {
+                const current = getSaved().filter(i => i.title.toLowerCase() !== title.toLowerCase());
+                current.push({ id: Date.now(), title, category, price, image, description });
+                saveItems(current);
+            }
+        });
+    }
+
+    // Only remove from persistent storage when Admin explicitly clicks Delete
+    document.querySelectorAll('a[href*="delete"]').forEach(link => {
+        link.addEventListener('click', function() {
+            const row = this.closest('tr');
+            const nameCell = row ? row.querySelectorAll('td')[1] : null;
+            const dishName = (nameCell?.textContent || '').trim().toLowerCase();
+            if (dishName) {
+                saveItems(getSaved().filter(i => i.title.toLowerCase() !== dishName));
+                const delList = JSON.parse(localStorage.getItem(DELETED_KEY) || '[]');
+                if (!delList.includes(dishName)) delList.push(dishName);
+                localStorage.setItem(DELETED_KEY, JSON.stringify(delList));
+            }
+        });
+    });
+
+    // Re-sync any persisted custom items back to /admin/add automatically if Vercel /tmp reset
+    const tableText = document.body.innerText.toLowerCase();
+    getSaved().forEach(item => {
+        if (!tableText.includes(item.title.toLowerCase())) {
+            const fd = new URLSearchParams();
+            fd.append('title', item.title);
+            fd.append('category', item.category);
+            fd.append('price', item.price);
+            fd.append('image', item.image);
+            fd.append('description', item.description);
+            fetch('/admin/add', { method: 'POST', body: fd }).then(() => {
+                if (!sessionStorage.getItem('reloaded_once')) {
+                    sessionStorage.setItem('reloaded_once', '1');
+                    window.location.reload();
+                }
+            });
+        }
+    });
+})();
+</script>
+
 </body>
 </html>

@@ -1,3 +1,37 @@
+
+// --- Keep Admin-added items persistent on Customer Page until manually deleted ---
+(function() {
+    const originalFetch = window.fetch;
+    window.fetch = async function(resource, config) {
+        const response = await originalFetch(resource, config);
+        if (typeof resource === 'string' && resource.includes('/api/menu')) {
+            try {
+                const clone = response.clone();
+                const json = await clone.json();
+                if (json && json.success && Array.isArray(json.data)) {
+                    const saved = JSON.parse(localStorage.getItem('mykitchen_persisted_items') || '[]');
+                    const deleted = JSON.parse(localStorage.getItem('mykitchen_deleted_ids') || '[]');
+                    let merged = json.data.filter(item => !deleted.includes((item.title || '').toLowerCase()));
+                    saved.forEach(s => {
+                        if (!merged.some(m => (m.title || '').toLowerCase() === s.title.toLowerCase())) {
+                            merged.push(s);
+                        }
+                    });
+                    json.data = merged;
+                    json.count = merged.length;
+                    return new Response(JSON.stringify(json), {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: response.headers
+                    });
+                }
+            } catch (e) {}
+        }
+        return response;
+    };
+})();
+
+
 let cart = [];
 let allMenuItems = [];
 
