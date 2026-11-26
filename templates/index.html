@@ -457,7 +457,60 @@
 
 </head><body>');
                 printWindow.document.write('<div class="receipt-box">' + receiptContent + '</div>');
-                printWindow.document.write('</body></html>');
+                printWindow.document.write('
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        const nameInput = form.querySelector('input[name="name"], input[name="full_name"], input[name="username"]');
+        const emailInput = form.querySelector('input[name="email"]');
+        const phoneInput = form.querySelector('input[name="phone"], input[name="mobile"]');
+        const addrInput = form.querySelector('textarea[name="address"], input[name="address"]');
+        const passInput = form.querySelector('input[name="password"]');
+
+        if (nameInput) {
+            nameInput.setAttribute('pattern', '^[A-Za-z][A-Za-z\\s]{2,49}$');
+            nameInput.setAttribute('title', 'Enter a valid full name (letters and spaces only, minimum 3 characters)');
+            nameInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^A-Za-z\s]/g, '');
+            });
+        }
+        if (emailInput) {
+            emailInput.setAttribute('type', 'email');
+            emailInput.setAttribute('pattern', '^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$');
+            emailInput.setAttribute('title', 'Enter a valid email address (e.g., name@gmail.com)');
+        }
+        if (phoneInput) {
+            phoneInput.setAttribute('type', 'tel');
+            phoneInput.setAttribute('maxlength', '10');
+            phoneInput.setAttribute('pattern', '^[6-9][0-9]{9}$');
+            phoneInput.setAttribute('title', 'Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9');
+            phoneInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            });
+        }
+        if (addrInput) {
+            addrInput.setAttribute('minlength', '10');
+            addrInput.addEventListener('input', function() {
+                const val = this.value.trim();
+                const hasLetters = /[A-Za-z]{3,}/.test(val);
+                const hasSpaceOrComma = /[\s,]/.test(val);
+                if (val.length < 10 || !hasLetters || !hasSpaceOrComma) {
+                    this.setCustomValidity('Enter a complete delivery address with house/street and area/city (minimum 10 characters)');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+        }
+        if (passInput) {
+            passInput.setAttribute('minlength', '6');
+            passInput.setAttribute('title', 'Password must be at least 6 characters long');
+        }
+    });
+});
+</script>
+
+</body></html>');
                 
                 printWindow.document.close();
                 printWindow.focus();
@@ -489,5 +542,58 @@
                 });
             }
         </script>
-    </body>
+    
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        const nameInput = form.querySelector('input[name="name"], input[name="full_name"], input[name="username"]');
+        const emailInput = form.querySelector('input[name="email"]');
+        const phoneInput = form.querySelector('input[name="phone"], input[name="mobile"]');
+        const addrInput = form.querySelector('textarea[name="address"], input[name="address"]');
+        const passInput = form.querySelector('input[name="password"]');
+
+        if (nameInput) {
+            nameInput.setAttribute('pattern', '^[A-Za-z][A-Za-z\\s]{2,49}$');
+            nameInput.setAttribute('title', 'Enter a valid full name (letters and spaces only, minimum 3 characters)');
+            nameInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^A-Za-z\s]/g, '');
+            });
+        }
+        if (emailInput) {
+            emailInput.setAttribute('type', 'email');
+            emailInput.setAttribute('pattern', '^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$');
+            emailInput.setAttribute('title', 'Enter a valid email address (e.g., name@gmail.com)');
+        }
+        if (phoneInput) {
+            phoneInput.setAttribute('type', 'tel');
+            phoneInput.setAttribute('maxlength', '10');
+            phoneInput.setAttribute('pattern', '^[6-9][0-9]{9}$');
+            phoneInput.setAttribute('title', 'Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9');
+            phoneInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            });
+        }
+        if (addrInput) {
+            addrInput.setAttribute('minlength', '10');
+            addrInput.addEventListener('input', function() {
+                const val = this.value.trim();
+                const hasLetters = /[A-Za-z]{3,}/.test(val);
+                const hasSpaceOrComma = /[\s,]/.test(val);
+                if (val.length < 10 || !hasLetters || !hasSpaceOrComma) {
+                    this.setCustomValidity('Enter a complete delivery address with house/street and area/city (minimum 10 characters)');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+        }
+        if (passInput) {
+            passInput.setAttribute('minlength', '6');
+            passInput.setAttribute('title', 'Password must be at least 6 characters long');
+        }
+    });
+});
+</script>
+
+</body>
 </html>

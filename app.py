@@ -369,6 +369,21 @@ def clean_image_url(raw_url):
             return unquote(parsed["imgurl"][0])
     return raw_url
 
+
+def validate_registration_fields(name, email, phone, address, password):
+    import re
+    if not name or not re.match(r'^[A-Za-z][A-Za-z\s]{2,49}$', name.strip()):
+        return "Full Name must contain only letters and spaces (min 3 characters)."
+    if not email or not re.match(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$', email.strip()):
+        return "Please enter a valid Email Address."
+    if not phone or not re.match(r'^[6-9][0-9]{9}$', phone.strip()):
+        return "Phone Number must be a valid 10-digit mobile number."
+    if not address or len(address.strip()) < 10 or not re.search(r'[A-Za-z]{3,}', address) or not re.search(r'[\s,]', address.strip()):
+        return "Please enter a complete Delivery Address (street, area, and city)."
+    if not password or len(password) < 6:
+        return "Password must be at least 6 characters long."
+    return None
+
 @app.route('/')
 def home():
     if not session.get('user_id'):
