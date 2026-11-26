@@ -414,48 +414,85 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-
 // --- Real-Time Live Menu Sync (Zero Page Refresh Needed) ---
 (function() {
     let lastMenuSignature = "";
 
-    async function checkMenuUpdates() {
+    function applyMenuData(items) {
+        const candidateFns = [
+            typeof loadMenu === 'function' ? loadMenu : null,
+            typeof fetchMenu === 'function' ? fetchMenu : null,
+            typeof getMenu === 'function' ? getMenu : null,
+            typeof initMenu === 'function' ? initMenu : null,
+            typeof renderMenu === 'function' ? renderMenu : null,
+            typeof displayMenu === 'function' ? displayMenu : null,
+            typeof renderMenuItems === 'function' ? renderMenuItems : null,
+            typeof showMenu === 'function' ? showMenu : null
+        ].filter(Boolean);
+
+        if (candidateFns.length > 0) {
+            // Call the primary loader/renderer with the fresh items array
+            candidateFns[0](items);
+            return;
+        }
+
+        // Direct DOM fallback: find the menu grid container and append any new dish cards immediately
+        const grid = document.querySelector('#menu-container, #menuContainer, .menu-grid, .dishes-grid, #menu .grid, #menu .row');
+        if (!grid) return;
+        const existingTitles = Array.from(grid.querySelectorAll('h3, h4, .dish-title, .card-title')).map(el => el.textContent.trim().toLowerCase());
+        items.forEach(item => {
+            if (!existingTitles.includes((item.title || '').trim().toLowerCase())) {
+                const card = document.createElement('div');
+                card.className = grid.firstElementChild ? grid.firstElementChild.className : 'menu-card';
+                card.innerHTML = `
+                    <img src="${item.image}" alt="${item.title}" referrerpolicy="no-referrer" style="width:100%;height:200px;object-fit:cover;border-radius:12px;">
+                    <h3>${item.title}</h3>
+                    <p>${item.description || ''}</p>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                        <span>₹${item.price}</span>
+                        <button onclick="if(typeof addToCart==='function') addToCart(${item.id}, '${(item.title||'').replace(/'/g, "\'")}', ${item.price})">Add to Cart</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            }
+        });
+    }
+
+    async function syncMenuNow(force) {
         try {
             const res = await fetch('/api/menu?t=' + Date.now(), { cache: 'no-store' });
             const json = await res.json();
             if (!json || !json.success || !Array.isArray(json.data)) return;
 
-            const signature = JSON.stringify(json.data.map(i => [i.id, i.title, i.price, i.image, i.category]));
-            if (!lastMenuSignature) {
-                lastMenuSignature = signature;
+            const sig = JSON.stringify(json.data.map(i => [i.id, i.title, i.price, i.image, i.category]));
+            if (!lastMenuSignature && !force) {
+                lastMenuSignature = sig;
                 return;
             }
-            if (signature !== lastMenuSignature) {
-                lastMenuSignature = signature;
-                if (typeof loadMenu === 'function') {
-                    loadMenu();
-                } else if (typeof fetchMenu === 'function') {
-                    fetchMenu();
-                } else if (typeof renderMenu === 'function') {
-                    renderMenu(json.data);
-                } else if (typeof displayMenu === 'function') {
-                    displayMenu(json.data);
-                }
+            if (force || sig !== lastMenuSignature) {
+                lastMenuSignature = sig;
+                applyMenuData(json.data);
             }
-        } catch (err) {
-            // Silently ignore transient network hiccups
-        }
+        } catch (e) {}
     }
 
-    // Listen for instant cross-tab broadcast when Admin adds/deletes an item
+    // 1. Instant update when switching back to the Customer tab after adding an item in Admin
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) syncMenuNow(true);
+    });
+    window.addEventListener('focus', () => syncMenuNow(true));
+
+    // 2. Instant cross-tab broadcast & localStorage listener
     if ('BroadcastChannel' in window) {
-        const menuChannel = new BroadcastChannel('mykitchen_menu_sync');
-        menuChannel.onmessage = () => checkMenuUpdates();
+        const ch = new BroadcastChannel('mykitchen_menu_sync');
+        ch.onmessage = () => syncMenuNow(true);
     }
     window.addEventListener('storage', (e) => {
-        if (e.key === 'mykitchen_menu_updated') checkMenuUpdates();
+        if (e.key === 'mykitchen_menu_updated' || e.key === 'mykitchen_persisted_items') {
+            syncMenuNow(true);
+        }
     });
 
-    // Silently check for new admin menu updates every 5 seconds in the background
-    setInterval(checkMenuUpdates, 5000);
+    // 3. Fast 2-second background check
+    setInterval(() => syncMenuNow(false), 2000);
 })();
